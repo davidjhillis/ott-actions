@@ -1,0 +1,35 @@
+.util-button {
+	display: flex;
+	align-items: center;
+	padding: 8px 16px;
+	cursor: pointer;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+	
+	svg {
+		margin-right: 8px;
+		
+		path {
+			fill: #53ace3;
+			transition: fill 0.2s ease;
+		}
+	}
+	
+	&:hover {
+		background-color: rgba(0, 0, 0, 0.05);
+	}
+	
+	&.current {
+		background-color: rgba(83, 172, 227, 0.1);
+		
+		svg path {
+			fill: #4fc236;
+		}
+	}
+	
+	.util-button-label {
+		font-size: 14px;
+		font-weight: 500;
+		color: #333;
+	}
+}

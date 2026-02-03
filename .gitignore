@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.angular/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Specs and docs (not part of build)
+SPEC-*.md
+CMS-API-REFERENCE.md
+
+# Original demo template (reference only)
+external-module-demo-main/
+external-module-demo-main.zip
+ExternalModulesImplementationGuide.md
