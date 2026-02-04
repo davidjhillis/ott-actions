@@ -1,6 +1,7 @@
 import { ComponentRef, EventEmitter, Injectable, Type } from "@angular/core";
 import { Router } from "@angular/router";
 import { DynamicComponentService } from "./dynamic-component.service";
+import { AssetContextService } from "./asset-context.service";
 import { TopbarButtonComponent } from "../components/topbar-button/topbar-button.component";
 import { UtilButtonComponent } from "../components/util-button/util-button.component";
 import { MicroFrontendPanelComponent } from "../components/micro-frontend-panel/micro-frontend-panel.component";
@@ -32,7 +33,8 @@ export class MainComponentService extends ComponentBase {
 	
 	constructor(
 		private dynamicComponentService: DynamicComponentService,
-		private actionConfigService: ActionConfigService
+		private actionConfigService: ActionConfigService,
+		private assetContextService: AssetContextService
 	) {
 		super();
 
@@ -41,6 +43,15 @@ export class MainComponentService extends ComponentBase {
 			this.actionConfigService.configChanged.subscribe(config => {
 				if (this.actionBarRef?.instance) {
 					this.actionBarRef.instance.config = config;
+				}
+			})
+		);
+
+		// Subscribe to asset context changes to update action bar
+		this.observableSubTeardowns.push(
+			this.assetContextService.context$.subscribe(ctx => {
+				if (this.actionBarRef?.instance) {
+					this.actionBarRef.instance.context = ctx ?? undefined;
 				}
 			})
 		);
@@ -227,7 +238,7 @@ export class MainComponentService extends ComponentBase {
 	 */
 	public destroyActionBar(): void {
 		if (this.actionBarRef) {
-			const host = this.actionBarRef.location.nativeElement.parentElement;
+			const host = this.actionBarRef.location.nativeElement;
 			this.dynamicComponentService.destroyComponent(this.actionBarRef.instance);
 			if (host?.parentElement) {
 				host.parentElement.removeChild(host);

@@ -130,6 +130,50 @@ export class ActionConfigService {
 		return JSON.stringify(this.config, null, 2);
 	}
 
+	/**
+	 * Export current config as a downloadable JSON file
+	 */
+	exportToFile(): void {
+		const json = this.exportConfig();
+		const blob = new Blob([json], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const date = new Date().toISOString().split('T')[0];
+
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `igx-ott-config-${date}.json`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+
+		console.log('[IGX-OTT] Config exported to file');
+	}
+
+	/**
+	 * Import config from a JSON file
+	 * @returns true if import was successful
+	 */
+	async importFromFile(file: File): Promise<boolean> {
+		try {
+			const text = await file.text();
+			const parsed = JSON.parse(text) as ActionBarConfig;
+
+			// Basic validation
+			if (!Array.isArray(parsed.groups) || !Array.isArray(parsed.actions)) {
+				console.warn('[IGX-OTT] Invalid config file: missing groups or actions arrays');
+				return false;
+			}
+
+			this.importConfig(parsed);
+			console.log('[IGX-OTT] Config imported from file');
+			return true;
+		} catch (e) {
+			console.error('[IGX-OTT] Failed to import config file:', e);
+			return false;
+		}
+	}
+
 	// ─── Persistence ─────────────────────────────────
 
 	private save(): void {

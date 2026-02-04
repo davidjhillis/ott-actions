@@ -1,9 +1,16 @@
 import { ComponentRef, Injectable } from '@angular/core';
 import { DynamicComponentService } from './dynamic-component.service';
+import { AssetContextService } from './asset-context.service';
 import { ActionDefinition } from '../models/action.model';
 import { DistributeReportComponent } from '../components/action-modals/distribute-report/distribute-report.component';
 import { ViewDetailsComponent } from '../components/action-modals/view-details/view-details.component';
 import { SendToTranslationComponent } from '../components/action-modals/send-to-translation/send-to-translation.component';
+import { AssignReportNumberComponent } from '../components/action-modals/assign-report-number/assign-report-number.component';
+import { ExportCollectionComponent } from '../components/action-modals/export-collection/export-collection.component';
+import { CreateCollectionComponent } from '../components/action-modals/create-collection/create-collection.component';
+import { ManageWorkflowComponent } from '../components/action-modals/manage-workflow/manage-workflow.component';
+import { BatchAssignComponent } from '../components/action-modals/batch-assign/batch-assign.component';
+import { ViewHistoryComponent } from '../components/action-modals/view-history/view-history.component';
 import { ActionManagerComponent } from '../components/action-admin/action-manager.component';
 
 @Injectable({
@@ -13,7 +20,8 @@ export class ActionExecutorService {
 	private activeModalRef?: ComponentRef<any>;
 
 	constructor(
-		private dynamicComponentService: DynamicComponentService
+		private dynamicComponentService: DynamicComponentService,
+		private assetContextService: AssetContextService
 	) { }
 
 	/**
@@ -68,6 +76,9 @@ export class ActionExecutorService {
 
 		this.activeModalRef = this.dynamicComponentService.createComponent(componentClass, host);
 
+		// Pass asset context if the component accepts it
+		this.passContextToComponent();
+
 		// Wire up close event
 		if (this.activeModalRef.instance.close) {
 			this.activeModalRef.instance.close.subscribe(() => {
@@ -101,6 +112,9 @@ export class ActionExecutorService {
 		}
 
 		this.activeModalRef = this.dynamicComponentService.createComponent(componentClass, host);
+
+		// Pass asset context if the component accepts it
+		this.passContextToComponent();
 
 		if (this.activeModalRef.instance.close) {
 			this.activeModalRef.instance.close.subscribe(() => {
@@ -148,6 +162,16 @@ export class ActionExecutorService {
 				return DistributeReportComponent;
 			case 'send-to-translation':
 				return SendToTranslationComponent;
+			case 'assign-report-number':
+				return AssignReportNumberComponent;
+			case 'export-collection':
+				return ExportCollectionComponent;
+			case 'create-collection':
+				return CreateCollectionComponent;
+			case 'manage-workflow':
+				return ManageWorkflowComponent;
+			case 'batch-assign':
+				return BatchAssignComponent;
 			default:
 				return null;
 		}
@@ -160,6 +184,8 @@ export class ActionExecutorService {
 		switch (componentId) {
 			case 'view-details':
 				return ViewDetailsComponent;
+			case 'view-history':
+				return ViewHistoryComponent;
 			default:
 				return null;
 		}
@@ -184,6 +210,17 @@ export class ActionExecutorService {
 			this.activeModalRef.instance.close.subscribe(() => {
 				this.closeActiveModal();
 			});
+		}
+	}
+
+	/**
+	 * Pass the current asset context to the active component if it has a context input
+	 */
+	private passContextToComponent(): void {
+		if (!this.activeModalRef) return;
+		const ctx = this.assetContextService.getCurrentContext();
+		if (ctx && 'context' in this.activeModalRef.instance) {
+			this.activeModalRef.instance.context = ctx;
 		}
 	}
 

@@ -23,6 +23,14 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 						<button class="btn btn-sm" (click)="onAddAction()">
 							<ott-icon name="plus" [size]="13"></ott-icon> Add Action
 						</button>
+						<button class="btn btn-sm" (click)="onExportConfig()">
+							<ott-icon name="download" [size]="13"></ott-icon> Export
+						</button>
+						<button class="btn btn-sm" (click)="fileInput.click()">
+							<ott-icon name="upload" [size]="13"></ott-icon> Import
+						</button>
+						<input #fileInput type="file" accept=".json" style="display:none"
+							(change)="onImportConfig($event)">
 						<button class="btn btn-sm" (click)="onResetDefaults()">
 							<ott-icon name="rotate-ccw" [size]="13"></ott-icon> Reset
 						</button>
@@ -526,6 +534,28 @@ export class ActionManagerComponent extends ComponentBase implements OnInit, OnD
 	toggleAction(action: ActionDefinition, event: Event): void {
 		event.stopPropagation();
 		this.configService.updateAction(action.id, { enabled: !action.enabled });
+	}
+
+	// --- Import/Export ---
+
+	onExportConfig(): void {
+		this.configService.exportToFile();
+	}
+
+	async onImportConfig(event: Event): Promise<void> {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+
+		const success = await this.configService.importFromFile(file);
+		if (success) {
+			this.loadConfig();
+			this.selectedAction = undefined;
+			this.editingGroup = undefined;
+		}
+
+		// Reset file input so the same file can be re-imported
+		input.value = '';
 	}
 
 	// --- Bulk ---

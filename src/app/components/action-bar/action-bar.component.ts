@@ -149,8 +149,14 @@ export class ActionBarComponent extends ComponentBase implements OnInit, OnDestr
 		if (!action.visibility) return true;
 		const vis = action.visibility;
 
+		// Folder/file restrictions (only apply when context is available)
 		if (vis.folderOnly && this.context && !this.context.isFolder) return false;
 		if (vis.fileOnly && this.context && this.context.isFolder) return false;
+
+		// Asset type / schema restrictions
+		if (vis.assetTypes?.length && this.context?.schema) {
+			if (!vis.assetTypes.includes(this.context.schema)) return false;
+		}
 
 		return true;
 	}
