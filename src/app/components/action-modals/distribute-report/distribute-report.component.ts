@@ -2,6 +2,7 @@ import { Component, ElementRef, EventEmitter, OnDestroy, OnInit, Output } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ComponentBase } from '../../../ComponentBase';
+import { LucideIconComponent } from '../../shared/lucide-icon.component';
 
 interface Recipient {
 	id: string;
@@ -13,14 +14,14 @@ interface Recipient {
 @Component({
 	selector: 'app-distribute-report',
 	standalone: true,
-	imports: [CommonModule, FormsModule],
+	imports: [CommonModule, FormsModule, LucideIconComponent],
 	template: `
 		<div class="modal-overlay" (click)="onCancel()">
 			<div class="modal-dialog" (click)="$event.stopPropagation()">
 				<div class="modal-header">
 					<h3>Distribute Report</h3>
 					<button class="close-btn" (click)="onCancel()">
-						<span class="fa-light fa-xmark"></span>
+						<ott-icon name="x" [size]="18"></ott-icon>
 					</button>
 				</div>
 				<div class="modal-body">
@@ -76,11 +77,13 @@ interface Recipient {
 			align-items: center;
 			justify-content: center;
 			z-index: 10000;
+			font-family: var(--ott-font);
 		}
 		.modal-dialog {
-			background: #fff;
-			border-radius: 8px;
-			box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+			background: var(--ott-bg);
+			border-radius: var(--ott-radius-xl);
+			box-shadow: var(--ott-shadow-xl);
+			border: 1px solid var(--ott-border);
 			width: 480px;
 			max-height: 80vh;
 			display: flex;
@@ -91,22 +94,28 @@ interface Recipient {
 			align-items: center;
 			justify-content: space-between;
 			padding: 16px 20px;
-			border-bottom: 1px solid #eee;
+			border-bottom: 1px solid var(--ott-border-light);
 		}
 		.modal-header h3 {
 			margin: 0;
-			font-size: 16px;
+			font-size: 15px;
 			font-weight: 600;
+			color: var(--ott-text);
 		}
 		.close-btn {
 			border: none;
 			background: none;
 			font-size: 18px;
 			cursor: pointer;
-			color: #888;
+			color: var(--ott-text-muted);
 			padding: 4px;
+			border-radius: var(--ott-radius-sm);
+			transition: color 0.15s, background-color 0.15s;
 		}
-		.close-btn:hover { color: #333; }
+		.close-btn:hover {
+			color: var(--ott-text);
+			background: var(--ott-bg-hover);
+		}
 		.modal-body {
 			padding: 16px 20px;
 			overflow-y: auto;
@@ -114,12 +123,12 @@ interface Recipient {
 		}
 		.modal-description {
 			margin: 0 0 12px;
-			color: #666;
+			color: var(--ott-text-secondary);
 			font-size: 13px;
 		}
 		.select-all {
-			padding: 6px 0;
-			border-bottom: 1px solid #eee;
+			padding: 8px 0;
+			border-bottom: 1px solid var(--ott-border-light);
 			margin-bottom: 8px;
 		}
 		.select-all label {
@@ -129,6 +138,7 @@ interface Recipient {
 			font-weight: 600;
 			font-size: 13px;
 			cursor: pointer;
+			color: var(--ott-text);
 		}
 		.recipient-list {
 			max-height: 200px;
@@ -139,54 +149,59 @@ interface Recipient {
 			display: flex;
 			align-items: center;
 			gap: 8px;
-			padding: 6px 0;
+			padding: 7px 0;
 			cursor: pointer;
 			font-size: 13px;
+			color: var(--ott-text);
 		}
 		.recipient-name {
 			flex: 1;
 		}
 		.recipient-email {
-			color: #999;
+			color: var(--ott-text-muted);
 			font-size: 12px;
 		}
 		.options-section {
-			border-top: 1px solid #eee;
+			border-top: 1px solid var(--ott-border-light);
 			padding-top: 12px;
 		}
 		.option-item {
 			display: flex;
 			align-items: center;
 			gap: 8px;
-			padding: 4px 0;
+			padding: 5px 0;
 			font-size: 13px;
 			cursor: pointer;
+			color: var(--ott-text);
 		}
 		.modal-footer {
 			display: flex;
 			justify-content: flex-end;
 			gap: 8px;
-			padding: 12px 20px;
-			border-top: 1px solid #eee;
+			padding: 14px 20px;
+			border-top: 1px solid var(--ott-border-light);
 		}
 		.btn {
 			padding: 8px 16px;
-			border-radius: 4px;
+			border-radius: var(--ott-radius-md);
 			font-size: 13px;
+			font-family: var(--ott-font);
+			font-weight: 500;
 			cursor: pointer;
-			border: 1px solid #ddd;
+			border: 1px solid var(--ott-border);
+			transition: background-color 0.15s, border-color 0.15s;
 		}
 		.btn-secondary {
-			background: #fff;
-			color: #333;
+			background: var(--ott-bg);
+			color: var(--ott-text);
 		}
-		.btn-secondary:hover { background: #f5f5f5; }
+		.btn-secondary:hover { background: var(--ott-bg-hover); }
 		.btn-primary {
-			background: #53ace3;
+			background: var(--ott-primary);
 			color: #fff;
-			border-color: #53ace3;
+			border-color: var(--ott-primary);
 		}
-		.btn-primary:hover { background: #3d9ad4; }
+		.btn-primary:hover { background: var(--ott-primary-hover); }
 		.btn-primary:disabled {
 			opacity: 0.5;
 			cursor: not-allowed;

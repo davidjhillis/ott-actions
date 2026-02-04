@@ -2,16 +2,17 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActionDefinition, ActionGroup } from '../../models/action.model';
 import { ActionItemComponent } from './action-item.component';
+import { LucideIconComponent } from '../shared/lucide-icon.component';
 
 @Component({
 	selector: 'app-action-group',
 	standalone: true,
-	imports: [CommonModule, ActionItemComponent],
+	imports: [CommonModule, ActionItemComponent, LucideIconComponent],
 	template: `
 		<div class="action-group">
 			<div class="group-header" (click)="toggleCollapse()">
-				<span class="collapse-icon fa-solid"
-					[ngClass]="collapsed ? 'fa-chevron-right' : 'fa-chevron-down'">
+				<span class="collapse-icon">
+					<ott-icon [name]="collapsed ? 'chevron-right' : 'chevron-down'" [size]="12"></ott-icon>
 				</span>
 				<span class="group-label">{{ group.label }}</span>
 			</div>
@@ -27,29 +28,31 @@ import { ActionItemComponent } from './action-item.component';
 	styles: [`
 		:host { display: block; }
 		.action-group {
-			margin-bottom: 4px;
+			margin-bottom: 2px;
 		}
 		.group-header {
 			display: flex;
 			align-items: center;
 			gap: 6px;
-			padding: 6px 8px;
+			padding: 8px 10px;
 			cursor: pointer;
+			font-family: var(--ott-font);
 			font-size: 11px;
 			font-weight: 600;
 			text-transform: uppercase;
-			color: #666;
+			color: var(--ott-text-secondary);
 			letter-spacing: 0.5px;
 			user-select: none;
+			transition: color 0.15s;
 		}
 		.group-header:hover {
-			color: #333;
+			color: var(--ott-text);
 		}
 		.collapse-icon {
-			font-size: 9px;
-			width: 10px;
-			text-align: center;
-			transition: transform 0.15s;
+			width: 12px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
 		}
 		.group-actions {
 			padding: 0 0 4px 0;

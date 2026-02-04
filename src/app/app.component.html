@@ -3,3 +3,50 @@
   into the CMS top frame DOM by the main component service.
 -->
 <div class="igx-ott-container"></div>
+
+<!-- Dev mode: standalone preview when not running inside CMS -->
+<div class="dev-preview" *ngIf="devMode">
+  <div class="dev-header">
+    <h1>IGX-OTT Dev Preview</h1>
+    <span class="dev-badge">STANDALONE MODE</span>
+  </div>
+
+  <div class="dev-layout">
+    <!-- Simulated CMS content area -->
+    <div class="dev-cms-area">
+      <div class="dev-toolbar">
+        <span class="dev-toolbar-item">Assets</span>
+        <span class="dev-toolbar-item">Pages</span>
+        <span class="dev-toolbar-item active">Standards Collections</span>
+      </div>
+      <div class="dev-content">
+        <div class="dev-breadcrumb">/Standards/Quality/ISO-9001-2025</div>
+        <table class="dev-table">
+          <thead>
+            <tr><th>Name</th><th>Type</th><th>Status</th><th>Modified</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Draft-v3.2.docx</td><td>Document</td><td>Review</td><td>Jan 28, 2025</td></tr>
+            <tr><td>Appendix-A.pdf</td><td>Document</td><td>Draft</td><td>Jan 25, 2025</td></tr>
+            <tr><td>Review-Comments</td><td>Folder</td><td>--</td><td>Jan 30, 2025</td></tr>
+            <tr><td>Supporting-Data.xlsx</td><td>Spreadsheet</td><td>Approved</td><td>Jan 20, 2025</td></tr>
+            <tr><td>Cover-Letter.docx</td><td>Document</td><td>Draft</td><td>Feb 1, 2025</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <app-action-bar
+      [config]="actionConfigService.getConfig()"
+      (actionExecute)="onDevActionClick($event)"
+      (manageActions)="onDevManageActions()">
+    </app-action-bar>
+  </div>
+
+  <!-- Action Manager overlay -->
+  <app-action-manager
+    *ngIf="showActionManager"
+    (close)="onDevCloseManager()">
+  </app-action-manager>
+</div>

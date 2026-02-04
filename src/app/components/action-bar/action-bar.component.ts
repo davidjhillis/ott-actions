@@ -4,16 +4,17 @@ import { ComponentBase } from '../../ComponentBase';
 import { ActionBarConfig, ActionDefinition, ActionGroup } from '../../models/action.model';
 import { AssetContext } from '../../models/asset-context.model';
 import { ActionGroupComponent } from './action-group.component';
+import { LucideIconComponent } from '../shared/lucide-icon.component';
 import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 
 @Component({
 	selector: 'app-action-bar',
 	standalone: true,
-	imports: [CommonModule, ActionGroupComponent],
+	imports: [CommonModule, ActionGroupComponent, LucideIconComponent],
 	template: `
 		<div class="action-bar" [class.collapsed]="isCollapsed">
 			<div class="action-bar-toggle" (click)="toggleCollapse()" title="Toggle Actions">
-				<span class="fa-solid" [ngClass]="isCollapsed ? 'fa-chevron-left' : 'fa-chevron-right'"></span>
+				<ott-icon [name]="isCollapsed ? 'chevron-left' : 'chevron-right'" [size]="12"></ott-icon>
 			</div>
 			<div class="action-bar-content" *ngIf="!isCollapsed">
 				<div class="action-bar-header">
@@ -29,7 +30,7 @@ import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 				</div>
 				<div class="action-bar-footer">
 					<button class="manage-actions-btn" (click)="onManageActions()">
-						<span class="fa-light fa-sliders"></span>
+						<ott-icon name="sliders-horizontal" [size]="14"></ott-icon>
 						Manage Actions...
 					</button>
 				</div>
@@ -42,9 +43,9 @@ import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 			display: flex;
 			flex-direction: row;
 			height: 100%;
-			background: #fff;
-			border-left: 1px solid #ddd;
-			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			background: var(--ott-bg);
+			border-left: 1px solid var(--ott-border);
+			font-family: var(--ott-font);
 			position: relative;
 		}
 		.action-bar.collapsed {
@@ -57,31 +58,31 @@ import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 			width: 24px;
 			min-width: 24px;
 			cursor: pointer;
-			background: #f5f5f5;
-			border-right: 1px solid #ddd;
-			color: #888;
-			font-size: 10px;
-			transition: background-color 0.15s;
+			background: var(--ott-bg-muted);
+			border-right: 1px solid var(--ott-border);
+			color: var(--ott-text-muted);
+			transition: background-color 0.15s, color 0.15s;
 		}
 		.action-bar-toggle:hover {
-			background: #e8e8e8;
-			color: #333;
+			background: var(--ott-bg-hover);
+			color: var(--ott-text);
 		}
 		.action-bar-content {
 			display: flex;
 			flex-direction: column;
-			width: 220px;
+			width: 224px;
 			overflow: hidden;
 		}
 		.action-bar-header {
-			padding: 10px 12px 6px;
-			border-bottom: 1px solid #eee;
+			padding: 12px 12px 8px;
+			border-bottom: 1px solid var(--ott-border-light);
 		}
 		.action-bar-header h3 {
 			margin: 0;
-			font-size: 14px;
+			font-size: 13px;
 			font-weight: 600;
-			color: #333;
+			color: var(--ott-text);
+			letter-spacing: 0.02em;
 		}
 		.action-bar-body {
 			flex: 1;
@@ -89,7 +90,7 @@ import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 			padding: 4px 0;
 		}
 		.action-bar-footer {
-			border-top: 1px solid #eee;
+			border-top: 1px solid var(--ott-border-light);
 			padding: 8px;
 		}
 		.manage-actions-btn {
@@ -97,16 +98,19 @@ import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 			align-items: center;
 			gap: 6px;
 			width: 100%;
-			padding: 6px 8px;
+			padding: 7px 8px;
 			border: none;
 			background: none;
-			color: #53ace3;
+			color: var(--ott-primary);
+			font-family: var(--ott-font);
 			font-size: 12px;
+			font-weight: 500;
 			cursor: pointer;
-			border-radius: 3px;
+			border-radius: var(--ott-radius-md);
+			transition: background-color 0.15s;
 		}
 		.manage-actions-btn:hover {
-			background: #e8f0fe;
+			background: var(--ott-bg-selected);
 		}
 	`]
 })

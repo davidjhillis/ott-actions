@@ -1,17 +1,20 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActionDefinition } from '../../models/action.model';
+import { LucideIconComponent } from '../shared/lucide-icon.component';
 
 @Component({
 	selector: 'app-action-item',
 	standalone: true,
-	imports: [CommonModule],
+	imports: [CommonModule, LucideIconComponent],
 	template: `
 		<button class="action-item"
 			[class.disabled]="!action.enabled"
 			[title]="action.description || action.label"
 			(click)="onActionClick()">
-			<span class="action-icon fa-light" [ngClass]="action.icon"></span>
+			<span class="action-icon">
+				<ott-icon [name]="action.icon" [size]="15"></ott-icon>
+			</span>
 			<span class="action-label">{{ action.label }}</span>
 		</button>
 	`,
@@ -22,18 +25,19 @@ import { ActionDefinition } from '../../models/action.model';
 			align-items: center;
 			gap: 8px;
 			width: 100%;
-			padding: 6px 12px;
+			padding: 7px 12px;
 			border: none;
 			background: none;
-			color: #333;
+			color: var(--ott-text);
+			font-family: var(--ott-font);
 			font-size: 13px;
 			cursor: pointer;
-			border-radius: 3px;
+			border-radius: var(--ott-radius-md);
 			text-align: left;
-			transition: background-color 0.15s;
+			transition: background-color 0.15s, color 0.15s;
 		}
 		.action-item:hover {
-			background-color: #e8f0fe;
+			background-color: var(--ott-bg-selected);
 		}
 		.action-item.disabled {
 			opacity: 0.4;
@@ -42,8 +46,11 @@ import { ActionDefinition } from '../../models/action.model';
 		.action-icon {
 			width: 16px;
 			text-align: center;
-			color: #53ace3;
-			font-size: 14px;
+			color: var(--ott-primary);
+			flex-shrink: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
 		}
 		.action-label {
 			flex: 1;

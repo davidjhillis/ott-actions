@@ -2,11 +2,13 @@ import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActionDefinition, ActionGroup, ActionHandler, ActionType, VisibilityRule } from '../../models/action.model';
+import { LucideIconComponent } from '../shared/lucide-icon.component';
+import { IconPickerComponent } from '../shared/icon-picker.component';
 
 @Component({
 	selector: 'app-action-editor',
 	standalone: true,
-	imports: [CommonModule, FormsModule],
+	imports: [CommonModule, FormsModule, LucideIconComponent, IconPickerComponent],
 	template: `
 		<div class="editor-panel" *ngIf="action">
 			<div class="editor-header">
@@ -19,11 +21,8 @@ import { ActionDefinition, ActionGroup, ActionHandler, ActionType, VisibilityRul
 				</div>
 
 				<div class="form-group">
-					<label>Icon (Font Awesome)</label>
-					<div class="icon-input">
-						<span class="icon-preview fa-light" [ngClass]="draft.icon || 'fa-circle'"></span>
-						<input type="text" [(ngModel)]="draft.icon" placeholder="fa-paper-plane">
-					</div>
+					<label>Icon</label>
+					<ott-icon-picker [(value)]="draft.icon"></ott-icon-picker>
 				</div>
 
 				<div class="form-group">
@@ -92,7 +91,7 @@ import { ActionDefinition, ActionGroup, ActionHandler, ActionType, VisibilityRul
 			</div>
 		</div>
 		<div class="editor-empty" *ngIf="!action">
-			<span class="fa-light fa-hand-pointer"></span>
+			<ott-icon name="mouse-pointer" [size]="32" color="var(--ott-text-muted)"></ott-icon>
 			<p>Select an action to edit</p>
 		</div>
 	`,
@@ -104,110 +103,121 @@ import { ActionDefinition, ActionGroup, ActionHandler, ActionType, VisibilityRul
 			height: 100%;
 		}
 		.editor-header {
-			padding: 12px 16px;
-			border-bottom: 1px solid #eee;
+			padding: 14px 20px;
+			border-bottom: 1px solid var(--ott-border-light);
 		}
 		.editor-header h4 {
 			margin: 0;
 			font-size: 14px;
 			font-weight: 600;
+			color: var(--ott-text);
 		}
 		.editor-body {
 			flex: 1;
 			overflow-y: auto;
-			padding: 12px 16px;
+			padding: 16px 20px;
 		}
 		.form-group {
-			margin-bottom: 12px;
+			margin-bottom: 14px;
 		}
 		.form-group label {
 			display: block;
 			font-size: 12px;
-			font-weight: 600;
-			color: #666;
-			margin-bottom: 4px;
+			font-weight: 500;
+			color: var(--ott-text-secondary);
+			margin-bottom: 5px;
 		}
 		.form-group input[type="text"],
 		.form-group textarea,
 		.form-group select {
 			width: 100%;
-			padding: 6px 8px;
-			border: 1px solid #ddd;
-			border-radius: 4px;
+			padding: 7px 10px;
+			border: 1px solid var(--ott-border);
+			border-radius: var(--ott-radius-md);
 			font-size: 13px;
+			font-family: var(--ott-font);
 			box-sizing: border-box;
+			color: var(--ott-text);
+			background: var(--ott-bg);
+			transition: border-color 0.15s, box-shadow 0.15s;
+		}
+		.form-group input[type="text"]:focus,
+		.form-group textarea:focus,
+		.form-group select:focus {
+			outline: none;
+			border-color: var(--ott-primary);
+			box-shadow: 0 0 0 3px var(--ott-ring);
 		}
 		.form-group textarea { resize: vertical; }
-		.icon-input {
-			display: flex;
-			align-items: center;
-			gap: 8px;
-		}
-		.icon-preview {
-			width: 24px;
-			height: 24px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 16px;
-			color: #53ace3;
-			background: #f0f7ff;
-			border-radius: 4px;
-		}
-		.icon-input input { flex: 1; }
 		.form-divider {
-			border-top: 1px solid #eee;
-			margin: 16px 0 12px;
+			border-top: 1px solid var(--ott-border-light);
+			margin: 18px 0 14px;
 		}
 		h5 {
-			margin: 0 0 8px;
-			font-size: 12px;
+			margin: 0 0 10px;
+			font-size: 11px;
 			font-weight: 600;
-			color: #666;
+			color: var(--ott-text-secondary);
 			text-transform: uppercase;
+			letter-spacing: 0.5px;
 		}
 		.form-group-inline {
 			display: flex;
 			gap: 16px;
-			margin-bottom: 12px;
+			margin-bottom: 14px;
 		}
 		.form-group-inline label {
 			display: flex;
 			align-items: center;
-			gap: 4px;
+			gap: 6px;
 			font-size: 13px;
 			cursor: pointer;
+			color: var(--ott-text);
 		}
 		.editor-footer {
 			display: flex;
 			gap: 8px;
-			padding: 12px 16px;
-			border-top: 1px solid #eee;
+			padding: 14px 20px;
+			border-top: 1px solid var(--ott-border-light);
 			justify-content: flex-end;
 		}
 		.btn {
-			padding: 6px 14px;
-			border-radius: 4px;
+			padding: 7px 14px;
+			border-radius: var(--ott-radius-md);
 			font-size: 13px;
+			font-family: var(--ott-font);
+			font-weight: 500;
 			cursor: pointer;
-			border: 1px solid #ddd;
+			border: 1px solid var(--ott-border);
+			transition: background-color 0.15s, border-color 0.15s;
 		}
-		.btn-secondary { background: #fff; color: #333; }
-		.btn-secondary:hover { background: #f5f5f5; }
-		.btn-primary { background: #53ace3; color: #fff; border-color: #53ace3; }
-		.btn-primary:hover { background: #3d9ad4; }
+		.btn-secondary { background: var(--ott-bg); color: var(--ott-text); }
+		.btn-secondary:hover { background: var(--ott-bg-hover); }
+		.btn-primary {
+			background: var(--ott-primary);
+			color: #fff;
+			border-color: var(--ott-primary);
+		}
+		.btn-primary:hover { background: var(--ott-primary-hover); }
 		.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-		.btn-danger { background: #fff; color: #dc3545; border-color: #dc3545; }
-		.btn-danger:hover { background: #dc3545; color: #fff; }
+		.btn-danger {
+			background: var(--ott-bg);
+			color: var(--ott-danger);
+			border-color: var(--ott-danger);
+		}
+		.btn-danger:hover {
+			background: var(--ott-danger);
+			color: #fff;
+		}
 		.editor-empty {
 			display: flex;
 			flex-direction: column;
 			align-items: center;
 			justify-content: center;
 			height: 100%;
-			color: #999;
+			color: var(--ott-text-muted);
 		}
-		.editor-empty .fa-light { font-size: 32px; margin-bottom: 8px; }
+		.editor-empty ott-icon { margin-bottom: 8px; }
 		.editor-empty p { font-size: 13px; }
 	`]
 })
@@ -248,7 +258,7 @@ export class ActionEditorComponent implements OnChanges {
 		return {
 			id: '',
 			label: '',
-			icon: 'fa-circle',
+			icon: 'circle',
 			description: '',
 			handler: { type: 'modal' as ActionType },
 			visibility: {},

@@ -29,7 +29,7 @@ export const DEFAULT_ACTIONS: ActionDefinition[] = [
 	{
 		id: 'distribute-report',
 		label: 'Distribute Report',
-		icon: 'fa-paper-plane',
+		icon: 'send',
 		description: 'Send report to selected recipients',
 		handler: { type: 'modal', componentId: 'distribute-report' },
 		visibility: { folderOnly: true },
@@ -47,7 +47,7 @@ export const DEFAULT_ACTIONS: ActionDefinition[] = [
 	{
 		id: 'assign-report-number',
 		label: 'Assign Report Number',
-		icon: 'fa-hashtag',
+		icon: 'hash',
 		description: 'Assign an official report number to this collection',
 		handler: { type: 'modal', componentId: 'assign-report-number' },
 		visibility: { folderOnly: true },
@@ -58,7 +58,7 @@ export const DEFAULT_ACTIONS: ActionDefinition[] = [
 	{
 		id: 'export-collection',
 		label: 'Export Collection',
-		icon: 'fa-file-export',
+		icon: 'file-output',
 		description: 'Export collection contents as a package',
 		handler: { type: 'modal', componentId: 'export-collection' },
 		visibility: { folderOnly: true },
@@ -66,12 +66,23 @@ export const DEFAULT_ACTIONS: ActionDefinition[] = [
 		order: 3,
 		groupId: 'distribution'
 	},
+	{
+		id: 'send-to-translation',
+		label: 'Send to Translation',
+		icon: 'languages',
+		description: 'Send items for translation via Worldview',
+		handler: { type: 'modal', componentId: 'send-to-translation' },
+		visibility: { folderOnly: true },
+		enabled: true,
+		order: 4,
+		groupId: 'distribution'
+	},
 
 	// Management group
 	{
 		id: 'create-collection',
 		label: 'Create Collection',
-		icon: 'fa-folder-plus',
+		icon: 'folder-plus',
 		description: 'Create a new standards collection folder',
 		handler: { type: 'modal', componentId: 'create-collection' },
 		enabled: true,
@@ -81,7 +92,7 @@ export const DEFAULT_ACTIONS: ActionDefinition[] = [
 	{
 		id: 'manage-workflow',
 		label: 'Manage Workflow',
-		icon: 'fa-arrows-spin',
+		icon: 'refresh-cw',
 		description: 'Change workflow status of selected items',
 		handler: { type: 'modal', componentId: 'manage-workflow' },
 		enabled: true,
@@ -91,7 +102,7 @@ export const DEFAULT_ACTIONS: ActionDefinition[] = [
 	{
 		id: 'batch-assign',
 		label: 'Batch Assign',
-		icon: 'fa-users',
+		icon: 'users',
 		description: 'Assign items to team members',
 		handler: { type: 'modal', componentId: 'batch-assign' },
 		enabled: true,
@@ -103,7 +114,7 @@ export const DEFAULT_ACTIONS: ActionDefinition[] = [
 	{
 		id: 'view-details',
 		label: 'View Details',
-		icon: 'fa-circle-info',
+		icon: 'info',
 		description: 'View folder and asset details',
 		handler: { type: 'panel', componentId: 'view-details' },
 		enabled: true,
@@ -113,7 +124,7 @@ export const DEFAULT_ACTIONS: ActionDefinition[] = [
 	{
 		id: 'view-history',
 		label: 'View History',
-		icon: 'fa-clock-rotate-left',
+		icon: 'history',
 		description: 'View change history for this item',
 		handler: { type: 'panel', componentId: 'view-history' },
 		enabled: true,

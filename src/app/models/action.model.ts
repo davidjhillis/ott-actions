@@ -63,7 +63,7 @@ export interface ActionDefinition {
 	id: string;
 	/** Display label */
 	label: string;
-	/** Font Awesome icon class (e.g., 'fa-paper-plane') */
+	/** Lucide icon name (e.g., 'send', 'folder-plus', 'info') */
 	icon: string;
 	/** Tooltip / description */
 	description?: string;

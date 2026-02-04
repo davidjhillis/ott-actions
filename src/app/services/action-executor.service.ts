@@ -3,6 +3,7 @@ import { DynamicComponentService } from './dynamic-component.service';
 import { ActionDefinition } from '../models/action.model';
 import { DistributeReportComponent } from '../components/action-modals/distribute-report/distribute-report.component';
 import { ViewDetailsComponent } from '../components/action-modals/view-details/view-details.component';
+import { SendToTranslationComponent } from '../components/action-modals/send-to-translation/send-to-translation.component';
 import { ActionManagerComponent } from '../components/action-admin/action-manager.component';
 
 @Injectable({
@@ -145,6 +146,8 @@ export class ActionExecutorService {
 		switch (componentId) {
 			case 'distribute-report':
 				return DistributeReportComponent;
+			case 'send-to-translation':
+				return SendToTranslationComponent;
 			default:
 				return null;
 		}
@@ -189,7 +192,7 @@ export class ActionExecutorService {
 	 */
 	public closeActiveModal(): void {
 		if (this.activeModalRef) {
-			const host = this.activeModalRef.location.nativeElement.parentElement;
+			const host = this.activeModalRef.location.nativeElement;
 			this.dynamicComponentService.destroyComponent(this.activeModalRef.instance);
 			if (host?.parentElement) {
 				host.parentElement.removeChild(host);

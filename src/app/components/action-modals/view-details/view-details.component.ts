@@ -2,17 +2,18 @@ import { Component, ElementRef, EventEmitter, OnDestroy, OnInit, Output } from '
 import { CommonModule } from '@angular/common';
 import { ComponentBase } from '../../../ComponentBase';
 import { AssetContext } from '../../../models/asset-context.model';
+import { LucideIconComponent } from '../../shared/lucide-icon.component';
 
 @Component({
 	selector: 'app-view-details',
 	standalone: true,
-	imports: [CommonModule],
+	imports: [CommonModule, LucideIconComponent],
 	template: `
 		<div class="details-panel">
 			<div class="panel-header">
 				<h3>Details</h3>
 				<button class="close-btn" (click)="onClose()">
-					<span class="fa-light fa-xmark"></span>
+					<ott-icon name="x" [size]="16"></ott-icon>
 				</button>
 			</div>
 			<div class="panel-body">
@@ -46,7 +47,7 @@ import { AssetContext } from '../../../models/asset-context.model';
 					<h4>Contents ({{ context!.selectedItems!.length }} items)</h4>
 					<div class="item-list">
 						<div class="item-row" *ngFor="let item of context!.selectedItems">
-							<span class="item-icon fa-light" [ngClass]="item.isFolder ? 'fa-folder' : 'fa-file'"></span>
+							<span class="item-icon"><ott-icon [name]="item.isFolder ? 'folder' : 'file'" [size]="14"></ott-icon></span>
 							<span class="item-name">{{ item.name }}</span>
 							<span class="item-type">{{ item.schema || '' }}</span>
 						</div>
@@ -77,37 +78,44 @@ import { AssetContext } from '../../../models/asset-context.model';
 		:host { display: block; height: 100%; }
 		.details-panel {
 			height: 100%;
-			background: #fff;
-			border-left: 1px solid #ddd;
+			background: var(--ott-bg);
+			border-left: 1px solid var(--ott-border);
 			display: flex;
 			flex-direction: column;
 			width: 300px;
-			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			font-family: var(--ott-font);
 		}
 		.panel-header {
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
-			padding: 12px 16px;
-			border-bottom: 1px solid #eee;
+			padding: 14px 16px;
+			border-bottom: 1px solid var(--ott-border-light);
 		}
 		.panel-header h3 {
 			margin: 0;
 			font-size: 14px;
 			font-weight: 600;
+			color: var(--ott-text);
 		}
 		.close-btn {
 			border: none;
 			background: none;
 			cursor: pointer;
-			color: #888;
+			color: var(--ott-text-muted);
 			font-size: 16px;
+			padding: 4px;
+			border-radius: var(--ott-radius-sm);
+			transition: color 0.15s, background-color 0.15s;
 		}
-		.close-btn:hover { color: #333; }
+		.close-btn:hover {
+			color: var(--ott-text);
+			background: var(--ott-bg-hover);
+		}
 		.panel-body {
 			flex: 1;
 			overflow-y: auto;
-			padding: 12px 16px;
+			padding: 14px 16px;
 		}
 		.detail-section {
 			margin-bottom: 20px;
@@ -117,37 +125,37 @@ import { AssetContext } from '../../../models/asset-context.model';
 			font-size: 11px;
 			font-weight: 600;
 			text-transform: uppercase;
-			color: #888;
+			color: var(--ott-text-muted);
 			letter-spacing: 0.5px;
 		}
 		.detail-row {
 			display: flex;
-			padding: 4px 0;
+			padding: 5px 0;
 			font-size: 13px;
 		}
 		.detail-label {
 			width: 60px;
-			color: #888;
+			color: var(--ott-text-muted);
 			flex-shrink: 0;
 		}
 		.detail-value {
-			color: #333;
+			color: var(--ott-text);
 			word-break: break-word;
 		}
 		.path-value {
-			font-family: monospace;
+			font-family: var(--ott-font-mono);
 			font-size: 12px;
 		}
 		.status-badge {
 			padding: 2px 8px;
-			border-radius: 10px;
+			border-radius: var(--ott-radius-full);
 			font-size: 11px;
 			font-weight: 600;
 		}
-		.status-draft { background: #fff3cd; color: #856404; }
-		.status-review { background: #cce5ff; color: #004085; }
-		.status-approved { background: #d4edda; color: #155724; }
-		.status-published { background: #d1ecf1; color: #0c5460; }
+		.status-draft { background: var(--ott-warning-light); color: #92400e; }
+		.status-review { background: var(--ott-primary-light); color: #1e40af; }
+		.status-approved { background: var(--ott-success-light); color: #166534; }
+		.status-published { background: #dbeafe; color: #1e3a5f; }
 		.item-list {
 			max-height: 150px;
 			overflow-y: auto;
@@ -156,12 +164,12 @@ import { AssetContext } from '../../../models/asset-context.model';
 			display: flex;
 			align-items: center;
 			gap: 8px;
-			padding: 4px 0;
+			padding: 5px 0;
 			font-size: 13px;
 		}
-		.item-icon { color: #53ace3; width: 16px; text-align: center; }
-		.item-name { flex: 1; }
-		.item-type { color: #999; font-size: 12px; }
+		.item-icon { color: var(--ott-primary); width: 16px; text-align: center; flex-shrink: 0; }
+		.item-name { flex: 1; color: var(--ott-text); }
+		.item-type { color: var(--ott-text-muted); font-size: 12px; }
 		.stats-grid {
 			display: grid;
 			grid-template-columns: repeat(3, 1fr);
@@ -169,19 +177,20 @@ import { AssetContext } from '../../../models/asset-context.model';
 		}
 		.stat-item {
 			text-align: center;
-			padding: 8px;
-			background: #f8f9fa;
-			border-radius: 4px;
+			padding: 10px 8px;
+			background: var(--ott-bg-muted);
+			border-radius: var(--ott-radius-md);
+			border: 1px solid var(--ott-border-light);
 		}
 		.stat-value {
 			display: block;
 			font-size: 18px;
 			font-weight: 600;
-			color: #333;
+			color: var(--ott-text);
 		}
 		.stat-label {
 			font-size: 11px;
-			color: #888;
+			color: var(--ott-text-muted);
 		}
 	`]
 })

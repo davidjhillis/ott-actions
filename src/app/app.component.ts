@@ -1,8 +1,14 @@
 import { Component, AfterViewInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ComponentBase } from './ComponentBase';
 import { MainComponentService } from './services/main-component.service';
 import { DynamicComponentService } from './services/dynamic-component.service';
 import { ActionExecutorService } from './services/action-executor.service';
+import { ActionConfigService } from './services/action-config.service';
+import { ThemeService } from './services/theme.service';
+import { ActionBarComponent } from './components/action-bar/action-bar.component';
+import { ActionManagerComponent } from './components/action-admin/action-manager.component';
+import { ActionDefinition } from './models/action.model';
 
 /**
  * Main application component
@@ -13,29 +19,42 @@ import { ActionExecutorService } from './services/action-executor.service';
 @Component({
 	selector: '[igx-ott-root]',
 	standalone: true,
-	imports: [],
+	imports: [CommonModule, ActionBarComponent, ActionManagerComponent],
 	templateUrl: './app.component.html',
 	styleUrl: './app.component.less'
 })
 export class AppComponent extends ComponentBase implements AfterViewInit, OnDestroy {
 	private _topbarRef: any;
+
+	/** Dev mode: true when not running inside CMS iframe */
+	devMode = false;
+	showActionManager = false;
 	
 	constructor(
 		private mainComponentService: MainComponentService,
 		private dynamicComponentService: DynamicComponentService,
-		private actionExecutorService: ActionExecutorService
+		private actionExecutorService: ActionExecutorService,
+		public actionConfigService: ActionConfigService,
+		private themeService: ThemeService
 	) {
 		super();
-		
+
 		// Get reference to the top window
 		const topWindow = window.top as any;
 		if (!topWindow)
 			return;
-		
+
 		// Get NgRef from top window
 		const ngref = topWindow.NG_REF as any;
-		if (!ngref)
+		if (!ngref) {
+			// No CMS context - enable dev mode for standalone preview
+			this.devMode = true;
+			console.log('[IGX-OTT] Dev mode: rendering components standalone');
 			return;
+		}
+
+		// Inject design tokens + Geist font into CMS top frame
+		this.themeService.injectIntoTopFrame();
 		
 		// Wire up action execution
 		this.observableSubTeardowns.push(
@@ -114,6 +133,22 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 		}, 300);
 	}
 	
+	/** Dev mode: handle action clicks */
+	onDevActionClick(action: ActionDefinition): void {
+		console.log(`[IGX-OTT] Dev action: ${action.id} (${action.handler.type})`);
+		this.actionExecutorService.execute(action);
+	}
+
+	/** Dev mode: open Action Manager */
+	onDevManageActions(): void {
+		this.showActionManager = true;
+	}
+
+	/** Dev mode: close Action Manager */
+	onDevCloseManager(): void {
+		this.showActionManager = false;
+	}
+
 	private createTopbarButton(): void {
 		if (!!this._topbarRef)
 			return;
