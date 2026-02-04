@@ -74,7 +74,14 @@ export class ActionExecutorService {
 			return;
 		}
 
-		this.activeModalRef = this.dynamicComponentService.createComponent(componentClass, host);
+		try {
+			this.activeModalRef = this.dynamicComponentService.createComponent(componentClass, host);
+			console.log(`[IGX-OTT] Modal created: ${action.handler.componentId}`);
+		} catch (err) {
+			console.error(`[IGX-OTT] Failed to create modal: ${action.handler.componentId}`, err);
+			host.remove();
+			return;
+		}
 
 		// Pass asset context if the component accepts it
 		this.passContextToComponent();
@@ -97,7 +104,10 @@ export class ActionExecutorService {
 		if (!topWindow) return;
 
 		const container = topWindow.document.querySelector('#globalTabContainer');
-		if (!container) return;
+		if (!container) {
+			console.warn('[IGX-OTT] Panel container #globalTabContainer not found');
+			return;
+		}
 
 		const host = topWindow.document.createElement('div');
 		host.id = 'igx-ott-panel';
@@ -111,7 +121,14 @@ export class ActionExecutorService {
 			return;
 		}
 
-		this.activeModalRef = this.dynamicComponentService.createComponent(componentClass, host);
+		try {
+			this.activeModalRef = this.dynamicComponentService.createComponent(componentClass, host);
+			console.log(`[IGX-OTT] Panel created: ${action.handler.componentId}`);
+		} catch (err) {
+			console.error(`[IGX-OTT] Failed to create panel: ${action.handler.componentId}`, err);
+			host.remove();
+			return;
+		}
 
 		// Pass asset context if the component accepts it
 		this.passContextToComponent();

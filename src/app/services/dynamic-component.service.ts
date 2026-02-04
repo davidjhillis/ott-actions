@@ -1,7 +1,12 @@
-import { ApplicationRef, ComponentRef, EnvironmentInjector, Injectable, Type, createComponent } from "@angular/core";
+import { ApplicationRef, ComponentRef, EnvironmentInjector, Injectable, NgZone, Type, createComponent } from "@angular/core";
 
 /**
- * Service responsible for creating and managing dynamic components
+ * Service responsible for creating and managing dynamic components.
+ *
+ * Cross-frame rendering: When a host element is in a different document
+ * (e.g. CMS top frame), Angular injects scoped <style> tags into the
+ * iframe's <head> — not the top frame's. This service detects cross-
+ * document hosts and syncs all component styles to the target document.
  */
 @Injectable({
 	providedIn: 'root'
@@ -11,7 +16,7 @@ export class DynamicComponentService {
 	 * Map of component instances to their ComponentRefs
 	 */
 	private createdComponents: Map<any, ComponentRef<any>> = new Map();
-	
+
 	/**
 	 * Map of hidden components with their original location information
 	 */
@@ -21,17 +26,21 @@ export class DynamicComponentService {
 		nextSibling: Node | null;
 		componentType: Type<any>;
 	}> = new Map();
-	
+
 	/**
 	 * Map of HTML elements to their component instances
 	 */
 	private elementToComponentMap: Map<HTMLElement, any> = new Map();
-	
+
+	/** Hashes of styles already synced to the top frame */
+	private syncedStyleHashes = new Set<string>();
+
 	constructor(
 		private appRef: ApplicationRef,
-		private environmentInjector: EnvironmentInjector
+		private environmentInjector: EnvironmentInjector,
+		private ngZone: NgZone
 	) { }
-	
+
 	/**
 	 * Creates a component of the specified type in the given host element
 	 * @param componentType The component type to create
@@ -44,15 +53,63 @@ export class DynamicComponentService {
 			environmentInjector: this.environmentInjector,
 			hostElement
 		});
-		
+
 		// Add component to change detection
 		this.appRef.attachView(componentRef.hostView);
-		
+
+		// If the host element is in a different document (CMS top frame),
+		// sync Angular's scoped component styles to that document so the
+		// CSS selectors can match the rendered elements.
+		this.syncStylesIfCrossDocument(hostElement);
+
 		// Store component reference for later management
 		this.createdComponents.set(componentRef.instance, componentRef);
 		this.elementToComponentMap.set(hostElement, componentRef.instance);
-		
+
 		return componentRef;
+	}
+
+	/**
+	 * Copy all Angular <style> elements from the iframe's <head> to the
+	 * target document's <head> when the host element lives in a different
+	 * document (e.g. CMS top frame). Uses content hashing to avoid
+	 * duplicates across multiple createComponent calls.
+	 */
+	private syncStylesIfCrossDocument(hostElement: HTMLElement): void {
+		const targetDoc = hostElement.ownerDocument;
+		if (!targetDoc || targetDoc === document) return;
+
+		const styles = document.head.querySelectorAll('style');
+		let synced = 0;
+
+		styles.forEach(style => {
+			const content = style.textContent || '';
+			if (!content.trim()) return;
+
+			const hash = this.quickHash(content);
+			if (this.syncedStyleHashes.has(hash)) return;
+			this.syncedStyleHashes.add(hash);
+
+			const clone = targetDoc.createElement('style');
+			clone.textContent = content;
+			clone.setAttribute('data-ott-synced', 'true');
+			targetDoc.head.appendChild(clone);
+			synced++;
+		});
+
+		if (synced > 0) {
+			console.log(`[IGX-OTT] Synced ${synced} style sheet(s) to top frame`);
+		}
+	}
+
+	/** Simple FNV-1a-style hash for deduplication */
+	private quickHash(s: string): string {
+		let h = 0x811c9dc5;
+		for (let i = 0; i < s.length; i++) {
+			h ^= s.charCodeAt(i);
+			h = Math.imul(h, 0x01000193);
+		}
+		return (h >>> 0).toString(36);
 	}
 	
 	/**
