@@ -141,11 +141,67 @@ export class ActionExecutorService {
 	}
 
 	/**
-	 * Calls a CMS API endpoint (stub for MVP)
+	 * Calls a CMS API service method via postMessage bridge
 	 */
 	private callCmsApi(action: ActionDefinition): void {
-		console.log(`[IGX-OTT] CMS API call: ${action.handler.method} ${action.handler.endpoint}`);
-		// TODO: Implement actual CMS API calls
+		const { cmsService, cmsMethod, postCall, confirmBefore } = action.handler;
+
+		// Handle legacy endpoint pattern
+		if (!cmsService && action.handler.endpoint) {
+			console.log(`[IGX-OTT] Legacy CMS API call: ${action.handler.method} ${action.handler.endpoint}`);
+			return;
+		}
+
+		if (!cmsService || !cmsMethod) {
+			console.warn(`[IGX-OTT] CMS API action missing service or method:`, action.id);
+			return;
+		}
+
+		// Show confirmation dialog if configured
+		if (confirmBefore) {
+			const confirmed = window.confirm(`Execute ${action.label}?\n\nThis will call ${cmsService}.${cmsMethod}`);
+			if (!confirmed) {
+				console.log(`[IGX-OTT] Action cancelled by user: ${action.id}`);
+				return;
+			}
+		}
+
+		// Get the current asset context for the API call
+		const ctx = this.assetContextService.getCurrentContext();
+		const args = ctx?.id ? [ctx.id] : [];
+
+		console.log(`[IGX-OTT] CMS API call: ${cmsService}.${cmsMethod}`, args);
+
+		// In production, this will call the CMS via postMessage
+		// For now, log what would be called
+		const topWindow = window.top as any;
+		if (topWindow?.NG_REF) {
+			// Production: Use CMSCommunicationsService pattern
+			const uniqueId = this.generateGuid();
+			topWindow.postMessage({
+				purpose: 'exModule:serviceCall',
+				service: cmsService,
+				action: cmsMethod,
+				uniqueId,
+				args,
+				postCall: postCall || undefined
+			}, '*');
+			console.log(`[IGX-OTT] CMS service call sent: ${cmsService}.${cmsMethod}`);
+		} else {
+			// Dev mode: Just log
+			console.log(`[IGX-OTT] Dev mode - would call: ${cmsService}.${cmsMethod}(${JSON.stringify(args)})`);
+		}
+	}
+
+	/**
+	 * Generate a GUID for CMS API calls
+	 */
+	private generateGuid(): string {
+		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+			const r = (Math.random() * 16) | 0;
+			const v = c === 'x' ? r : (r & 0x3) | 0x8;
+			return v.toString(16);
+		});
 	}
 
 	/**

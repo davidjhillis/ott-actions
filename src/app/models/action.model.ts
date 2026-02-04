@@ -41,16 +41,32 @@ export interface ConfirmationConfig {
 export interface ActionHandler {
 	/** The type of action */
 	type: ActionType;
-	/** CMS API endpoint path (for cmsApi type) */
-	endpoint?: string;
-	/** HTTP method (for cmsApi type) */
-	method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+
+	// --- Modal/Panel fields ---
 	/** Component ID to open (for modal/panel type) */
 	componentId?: string;
+
+	// --- CMS API fields ---
+	/** CMS service name (e.g., 'PageCommandsServices', 'SiteTreeServices') */
+	cmsService?: string;
+	/** CMS service method (e.g., 'GetPageData', 'Publish') */
+	cmsMethod?: string;
+	/** Post-call action (e.g., 'refreshTree', 'refreshPage') */
+	postCall?: string;
+	/** Show confirmation dialog before executing */
+	confirmBefore?: boolean;
+	/** Legacy: CMS API endpoint path */
+	endpoint?: string;
+	/** Legacy: HTTP method */
+	method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+
+	// --- Link/External fields ---
 	/** External URL (for external/link type) */
 	url?: string;
 	/** Whether to open in new tab (for link type) */
 	newTab?: boolean;
+
+	// --- Advanced ---
 	/** Custom handler function name */
 	customHandler?: string;
 }

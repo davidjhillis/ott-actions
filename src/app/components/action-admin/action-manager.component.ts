@@ -135,8 +135,8 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			background: var(--ott-bg);
 			border-radius: var(--ott-radius-xl);
 			box-shadow: var(--ott-shadow-xl);
-			width: 880px;
-			height: 620px;
+			width: 1060px;
+			height: 720px;
 			display: flex;
 			flex-direction: column;
 			overflow: hidden;
@@ -152,8 +152,9 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 		}
 		.manager-header h2 {
 			margin: 0;
-			font-size: 15px;
-			font-weight: 600;
+			font-family: Helvetica, Arial, sans-serif;
+			font-size: 18px;
+			font-weight: 400;
 			color: var(--ott-text);
 		}
 		.header-actions {
@@ -236,8 +237,9 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			cursor: grab;
 		}
 		.group-name {
-			font-weight: 600;
-			font-size: 13px;
+			font-family: Helvetica, Arial, sans-serif;
+			font-weight: 400;
+			font-size: 14px;
 			color: var(--ott-text);
 		}
 		.group-count {
@@ -271,10 +273,11 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			display: flex;
 			align-items: center;
 			gap: 8px;
-			padding: 8px 14px 8px 28px;
+			padding: 10px 14px 10px 28px;
 			cursor: pointer;
 			border-bottom: 1px solid var(--ott-border-light);
-			font-size: 13px;
+			font-family: Helvetica, Arial, sans-serif;
+			font-size: 14px;
 			transition: background-color 0.15s;
 		}
 		.action-row:hover { background: var(--ott-bg-muted); }
@@ -345,8 +348,9 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 		}
 		.group-editor .editor-header h4 {
 			margin: 0;
-			font-size: 14px;
-			font-weight: 600;
+			font-family: Helvetica, Arial, sans-serif;
+			font-size: 18px;
+			font-weight: 400;
 			color: var(--ott-text);
 		}
 		.group-editor .editor-body {
