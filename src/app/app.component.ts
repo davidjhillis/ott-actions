@@ -24,8 +24,6 @@ import { ActionDefinition } from './models/action.model';
 	styleUrl: './app.component.less'
 })
 export class AppComponent extends ComponentBase implements AfterViewInit, OnDestroy {
-	private _topbarRef: any;
-
 	/** Dev mode: true when not running inside CMS iframe */
 	devMode = false;
 	showActionManager = false;
@@ -70,17 +68,8 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 			})
 		);
 
-		// Subscribe to component initialization events if available
-		if (ngref.componentInitialized) {
-			this.observableSubTeardowns.push(
-				ngref.componentInitialized.subscribe((evt: any) => {
-					if (evt.component.constructor.name === "Topbar") {
-						// Topbar component is initialized
-						this.createTopbarButton();
-					}
-				})
-			);
-		}
+		// Note: We no longer create a topbar button. The action bar
+		// appears automatically in Site/Assets views.
 		
 		// Add router navigation event listener
 		if (ngref.router) {
@@ -89,9 +78,9 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 					if (event.constructor.name === 'NavigationEnd') {
 						this.mainComponentService.hideMainComponent();
 
-						// Show/hide action bar based on whether we're in Assets view
+						// Show/hide action bar based on whether we're in a content view
 						const url = ngref.router.routerState?.snapshot?.url || '';
-						if (url.includes('site/')) {
+						if (this.isContentView(url)) {
 							this.mainComponentService.createActionBar();
 							this.mainComponentService.showActionBar();
 						} else {
@@ -104,8 +93,10 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 	}
 	
 	ngAfterViewInit(): void {
-		// Add a timeout delay before creating the topbar button
-		this._createTopbarButtonWithDelay(); // 300ms delay
+		if (!this.devMode) {
+			// Delay to let CMS DOM settle, then create action bar
+			this._initCmsComponents();
+		}
 	}
 	
 	ngOnDestroy(): void {
@@ -116,17 +107,16 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 		this.dynamicComponentService.destroyAllComponents();
 	}
 	
-	private _createTopbarButtonWithDelay() {
+	private _initCmsComponents() {
 		setTimeout(() => {
-			this.createTopbarButton();
 			this.mainComponentService.createUtilButton();
 
-			// Try to create action bar if we're already in Assets view
+			// Create action bar if we're in a content view (Site or Assets)
 			const topWindow = window.top as any;
 			const router = topWindow?.NG_REF?.router;
 			if (router) {
 				const url = router.routerState?.snapshot?.url || '';
-				if (url.includes('site/')) {
+				if (this.isContentView(url)) {
 					this.mainComponentService.createActionBar();
 				}
 			}
@@ -149,36 +139,11 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 		this.showActionManager = false;
 	}
 
-	private createTopbarButton(): void {
-		if (!!this._topbarRef)
-			return;
-		
-		// Find CMS top toolbar
-		const topWindow = window.top as any;
-		if (!topWindow) return;
-		
-		// Find the toolbar
-		const toolbar = topWindow.document.querySelector('div.igx-toolbar');
-		if (!toolbar) {
-			console.error('[IGX-OTT] - Toolbar not found');
-			return;
-		}
-		
-		// Get buttons in the toolbar
-		const buttons = toolbar.querySelectorAll('.TopButton');
-		if (buttons.length < 3) {
-			console.error('[IGX-OTT] - Not enough buttons in toolbar', `${buttons.length} buttons found`);
-			return;
-		}
-		
-		// Create a container element
-		const container = document.createElement('div');
-        container.classList.add("TopButton")
-		
-		// Insert container after the second button
-		buttons[1].parentNode?.insertBefore(container, buttons[2].nextSibling);
-		
-		// Create TopbarButton component
-		this._topbarRef = this.mainComponentService.createTopbarButton(container);
+	/**
+	 * Checks if the current CMS URL is a content view (Site tree or Assets)
+	 * where the action bar should be visible.
+	 */
+	private isContentView(url: string): boolean {
+		return url.includes('site/') || url.includes('asset');
 	}
 }
