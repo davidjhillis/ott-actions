@@ -70,18 +70,41 @@ export class AssetContextService implements OnDestroy {
 	}
 
 	/**
-	 * Extract xID from URL (pattern: site/{xID}) and fetch page properties.
+	 * Extract ID from URL and fetch properties.
+	 * Supports: site/{xID}, assets/{a_ID}, assets/{assetfolders_ID}
 	 */
 	private resolveFromUrl(url: string): void {
-		const match = url.match(/site\/(x\d+)/i);
-		if (!match) {
-			this.contextSubject.next(null);
-			this.currentXid = undefined;
+		// Try site page pattern: site/x123
+		const siteMatch = url.match(/site\/(x\d+)/i);
+		if (siteMatch) {
+			this.resolveSitePage(siteMatch[1]);
 			return;
 		}
 
-		const xid = match[1];
-		if (xid === this.currentXid) return; // No change
+		// Try DAM asset pattern: assets/a_123
+		const assetMatch = url.match(/assets\/(a_\d+)/i);
+		if (assetMatch) {
+			this.resolveAsset(assetMatch[1]);
+			return;
+		}
+
+		// Try DAM folder pattern: assets/assetfolders_123
+		const folderMatch = url.match(/assets\/(assetfolders_\d+)/i);
+		if (folderMatch) {
+			this.resolveAssetFolder(folderMatch[1]);
+			return;
+		}
+
+		// No match — clear context
+		this.contextSubject.next(null);
+		this.currentXid = undefined;
+	}
+
+	/**
+	 * Resolve a site tree page by xID.
+	 */
+	private resolveSitePage(xid: string): void {
+		if (xid === this.currentXid) return;
 		this.currentXid = xid;
 
 		this.cms.callService<any>({
@@ -100,10 +123,9 @@ export class AssetContextService implements OnDestroy {
 					parentId: props?.ParentId || undefined,
 				};
 				this.contextSubject.next(ctx);
-				console.log(`[IGX-OTT] Asset context updated: ${ctx.name} (${xid})`);
+				console.log(`[IGX-OTT] Site context: ${ctx.name} (${xid})`);
 			},
 			error: () => {
-				// Fallback: basic context from URL only
 				this.contextSubject.next({
 					id: xid,
 					name: xid,
@@ -112,6 +134,64 @@ export class AssetContextService implements OnDestroy {
 				});
 			}
 		});
+	}
+
+	/**
+	 * Resolve a DAM asset by ID (URL format: a_17 → API format: a/17).
+	 */
+	private resolveAsset(urlId: string): void {
+		if (urlId === this.currentXid) return;
+		this.currentXid = urlId;
+
+		// Convert URL format (a_17) to API format (a/17)
+		const apiId = urlId.replace('_', '/');
+
+		this.cms.callService<any>({
+			service: 'AssetServices',
+			action: 'GetAssetInfo',
+			args: [apiId]
+		}).subscribe({
+			next: (info) => {
+				const ctx: AssetContext = {
+					id: apiId,
+					name: info?.Name || info?.FileName || urlId,
+					isFolder: false,
+					path: info?.Path || info?.FolderPath || '',
+					schema: info?.Schema || info?.AssetType || 'Asset',
+					workflowStatus: info?.WorkflowStatus || undefined,
+					parentId: info?.FolderId || info?.ParentId || undefined,
+				};
+				this.contextSubject.next(ctx);
+				console.log(`[IGX-OTT] Asset context: ${ctx.name} (${apiId})`);
+			},
+			error: () => {
+				// Fallback: basic context from URL
+				this.contextSubject.next({
+					id: apiId,
+					name: urlId,
+					isFolder: false,
+					path: ''
+				});
+				console.log(`[IGX-OTT] Asset context (fallback): ${urlId}`);
+			}
+		});
+	}
+
+	/**
+	 * Resolve a DAM asset folder.
+	 */
+	private resolveAssetFolder(folderId: string): void {
+		if (folderId === this.currentXid) return;
+		this.currentXid = folderId;
+
+		// Asset folders are folders — set basic context
+		this.contextSubject.next({
+			id: folderId,
+			name: folderId,
+			isFolder: true,
+			path: ''
+		});
+		console.log(`[IGX-OTT] Asset folder context: ${folderId}`);
 	}
 
 	ngOnDestroy(): void {
