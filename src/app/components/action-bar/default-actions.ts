@@ -100,13 +100,46 @@ export const DEFAULT_ACTIONS: ActionDefinition[] = [
 		groupId: 'management'
 	},
 	{
+		id: 'check-out',
+		label: 'Check Out',
+		icon: 'lock',
+		description: 'Check out this page for editing',
+		handler: {
+			type: 'cmsApi',
+			cmsService: 'PageCommandsServices',
+			cmsMethod: 'CheckOut',
+			confirmBefore: false
+		},
+		visibility: { fileOnly: true },
+		enabled: true,
+		order: 3,
+		groupId: 'management'
+	},
+	{
+		id: 'check-in',
+		label: 'Check In',
+		icon: 'unlock',
+		description: 'Check in this page after editing',
+		handler: {
+			type: 'cmsApi',
+			cmsService: 'PageCommandsServices',
+			cmsMethod: 'CheckIn',
+			postCall: 'refreshTree',
+			confirmBefore: false
+		},
+		visibility: { fileOnly: true },
+		enabled: true,
+		order: 4,
+		groupId: 'management'
+	},
+	{
 		id: 'batch-assign',
 		label: 'Batch Assign',
 		icon: 'users',
 		description: 'Assign items to team members',
 		handler: { type: 'modal', componentId: 'batch-assign' },
 		enabled: true,
-		order: 3,
+		order: 5,
 		groupId: 'management'
 	},
 

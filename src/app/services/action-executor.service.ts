@@ -1,6 +1,8 @@
 import { ComponentRef, Injectable } from '@angular/core';
 import { DynamicComponentService } from './dynamic-component.service';
 import { AssetContextService } from './asset-context.service';
+import { CMSCommunicationsService } from './cms-communications.service';
+import { NotificationService } from './notification.service';
 import { ActionDefinition } from '../models/action.model';
 import { DistributeReportComponent } from '../components/action-modals/distribute-report/distribute-report.component';
 import { ViewDetailsComponent } from '../components/action-modals/view-details/view-details.component';
@@ -21,7 +23,9 @@ export class ActionExecutorService {
 
 	constructor(
 		private dynamicComponentService: DynamicComponentService,
-		private assetContextService: AssetContextService
+		private assetContextService: AssetContextService,
+		private cms: CMSCommunicationsService,
+		private notify: NotificationService
 	) { }
 
 	/**
@@ -141,7 +145,8 @@ export class ActionExecutorService {
 	}
 
 	/**
-	 * Calls a CMS API service method via postMessage bridge
+	 * Calls a CMS API service method via CMSCommunicationsService Observable.
+	 * Shows loading → success/error toast notifications.
 	 */
 	private callCmsApi(action: ActionDefinition): void {
 		const { cmsService, cmsMethod, postCall, confirmBefore } = action.handler;
@@ -149,17 +154,19 @@ export class ActionExecutorService {
 		// Handle legacy endpoint pattern
 		if (!cmsService && action.handler.endpoint) {
 			console.log(`[IGX-OTT] Legacy CMS API call: ${action.handler.method} ${action.handler.endpoint}`);
+			this.notify.warning(`Legacy action "${action.label}" not yet supported`);
 			return;
 		}
 
 		if (!cmsService || !cmsMethod) {
 			console.warn(`[IGX-OTT] CMS API action missing service or method:`, action.id);
+			this.notify.error(`Action "${action.label}" is not configured properly`);
 			return;
 		}
 
 		// Show confirmation dialog if configured
 		if (confirmBefore) {
-			const confirmed = window.confirm(`Execute ${action.label}?\n\nThis will call ${cmsService}.${cmsMethod}`);
+			const confirmed = window.confirm(`Execute "${action.label}"?`);
 			if (!confirmed) {
 				console.log(`[IGX-OTT] Action cancelled by user: ${action.id}`);
 				return;
@@ -170,37 +177,29 @@ export class ActionExecutorService {
 		const ctx = this.assetContextService.getCurrentContext();
 		const args = ctx?.id ? [ctx.id] : [];
 
-		console.log(`[IGX-OTT] CMS API call: ${cmsService}.${cmsMethod}`, args);
+		// Show loading toast
+		const loader = this.notify.loading(`${action.label}...`);
 
-		// In production, this will call the CMS via postMessage
-		// For now, log what would be called
-		const topWindow = window.top as any;
-		if (topWindow?.NG_REF) {
-			// Production: Use CMSCommunicationsService pattern
-			const uniqueId = this.generateGuid();
-			topWindow.postMessage({
-				purpose: 'exModule:serviceCall',
-				service: cmsService,
-				action: cmsMethod,
-				uniqueId,
-				args,
-				postCall: postCall || undefined
-			}, '*');
-			console.log(`[IGX-OTT] CMS service call sent: ${cmsService}.${cmsMethod}`);
-		} else {
-			// Dev mode: Just log
-			console.log(`[IGX-OTT] Dev mode - would call: ${cmsService}.${cmsMethod}(${JSON.stringify(args)})`);
-		}
-	}
-
-	/**
-	 * Generate a GUID for CMS API calls
-	 */
-	private generateGuid(): string {
-		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-			const r = (Math.random() * 16) | 0;
-			const v = c === 'x' ? r : (r & 0x3) | 0x8;
-			return v.toString(16);
+		this.cms.callService<any>({
+			service: cmsService,
+			action: cmsMethod,
+			args,
+			postCall
+		}).subscribe({
+			next: (result) => {
+				console.log(`[IGX-OTT] CMS call success: ${cmsService}.${cmsMethod}`, result);
+				loader.success(`${action.label} completed`);
+			},
+			error: (err) => {
+				console.error(`[IGX-OTT] CMS call failed: ${cmsService}.${cmsMethod}`, err);
+				// Dev mode returns a specific error — show as info instead of error
+				if (this.cms.isDevMode) {
+					loader.dismiss();
+					this.notify.info(`Dev mode: ${cmsService}.${cmsMethod}(${args.join(', ')})`);
+				} else {
+					loader.error(`${action.label} failed`);
+				}
+			}
 		});
 	}
 

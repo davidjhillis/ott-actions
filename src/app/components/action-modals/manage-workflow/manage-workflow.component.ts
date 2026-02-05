@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ComponentBase } from '../../../ComponentBase';
 import { AssetContext } from '../../../models/asset-context.model';
 import { CMSCommunicationsService } from '../../../services/cms-communications.service';
+import { NotificationService } from '../../../services/notification.service';
 import { LucideIconComponent } from '../../shared/lucide-icon.component';
 
 interface WorkflowTransition {
@@ -94,11 +95,11 @@ interface WorkflowUser {
 				</div>
 
 				<div class="modal-footer">
-					<button class="btn btn-secondary" (click)="onCancel()">Cancel</button>
+					<button class="btn btn-secondary" (click)="onCancel()" [disabled]="advancing">Cancel</button>
 					<button class="btn btn-primary" (click)="onAdvance()"
-						[disabled]="!selectedTransition || (selectedTransition.requiresComment && !comment.trim())">
-						<ott-icon name="check-circle" [size]="14"></ott-icon>
-						Advance
+						[disabled]="!selectedTransition || (selectedTransition.requiresComment && !comment.trim()) || advancing">
+						<ott-icon [name]="advancing ? 'loader' : 'check-circle'" [size]="14"></ott-icon>
+						{{ advancing ? 'Advancing...' : 'Advance' }}
 					</button>
 				</div>
 			</div>
@@ -228,10 +229,12 @@ export class ManageWorkflowComponent extends ComponentBase implements OnInit, On
 	selectedTransition: WorkflowTransition | null = null;
 	assignToId = '';
 	comment = '';
+	advancing = false;
 
 	constructor(
 		ele: ElementRef,
-		private cms: CMSCommunicationsService
+		private cms: CMSCommunicationsService,
+		private notify: NotificationService
 	) {
 		super(ele);
 	}
@@ -307,9 +310,12 @@ export class ManageWorkflowComponent extends ComponentBase implements OnInit, On
 	}
 
 	onAdvance(): void {
-		if (!this.selectedTransition) return;
+		if (!this.selectedTransition || this.advancing) return;
+		this.advancing = true;
 
 		const pageId = this.context?.id || 'x312';
+		const label = this.selectedTransition.label;
+		const loader = this.notify.loading(`${label}...`);
 
 		this.cms.callService<any>({
 			service: 'PageCommandsServices',
@@ -318,12 +324,19 @@ export class ManageWorkflowComponent extends ComponentBase implements OnInit, On
 			postCall: 'refreshTree'
 		}).subscribe({
 			next: () => {
-				console.log(`[IGX-OTT] Workflow advanced: ${this.selectedTransition!.label}`);
+				console.log(`[IGX-OTT] Workflow advanced: ${label}`);
+				loader.success(`Workflow: ${label} completed`);
 				this.close.emit();
 			},
 			error: () => {
-				console.log(`[IGX-OTT] Workflow advanced (dev): ${this.selectedTransition!.label}`);
-				this.close.emit();
+				if (this.cms.isDevMode) {
+					loader.dismiss();
+					this.notify.info(`Dev mode: Would advance workflow to "${this.selectedTransition!.targetStatus}"`);
+					this.close.emit();
+				} else {
+					loader.error(`Workflow: ${label} failed`);
+					this.advancing = false;
+				}
 			}
 		});
 	}

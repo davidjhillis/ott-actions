@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ComponentBase } from '../../../ComponentBase';
 import { AssetContext } from '../../../models/asset-context.model';
 import { CMSCommunicationsService } from '../../../services/cms-communications.service';
+import { NotificationService } from '../../../services/notification.service';
 import { LucideIconComponent } from '../../shared/lucide-icon.component';
 
 @Component({
@@ -71,10 +72,10 @@ import { LucideIconComponent } from '../../shared/lucide-icon.component';
 				</div>
 
 				<div class="modal-footer">
-					<button class="btn btn-secondary" (click)="onCancel()">Cancel</button>
-					<button class="btn btn-primary" (click)="onCreate()" [disabled]="!collectionName.trim()">
-						<ott-icon name="folder-plus" [size]="14"></ott-icon>
-						Create
+					<button class="btn btn-secondary" (click)="onCancel()" [disabled]="saving">Cancel</button>
+					<button class="btn btn-primary" (click)="onCreate()" [disabled]="!collectionName.trim() || saving">
+						<ott-icon [name]="saving ? 'loader' : 'folder-plus'" [size]="14"></ott-icon>
+						{{ saving ? 'Creating...' : 'Create' }}
 					</button>
 				</div>
 			</div>
@@ -180,6 +181,7 @@ export class CreateCollectionComponent extends ComponentBase implements OnInit, 
 	description = '';
 	inheritPermissions = true;
 	createIndex = true;
+	saving = false;
 
 	schemas = [
 		{ value: 'StandardsCollection', label: 'Standards Collection' },
@@ -191,7 +193,8 @@ export class CreateCollectionComponent extends ComponentBase implements OnInit, 
 
 	constructor(
 		ele: ElementRef,
-		private cms: CMSCommunicationsService
+		private cms: CMSCommunicationsService,
+		private notify: NotificationService
 	) {
 		super(ele);
 	}
@@ -216,7 +219,10 @@ export class CreateCollectionComponent extends ComponentBase implements OnInit, 
 	}
 
 	onCreate(): void {
+		if (this.saving) return;
+		this.saving = true;
 		const parentId = this.context?.id || 'x312';
+		const loader = this.notify.loading(`Creating "${this.collectionName}"...`);
 
 		this.cms.callService<any>({
 			service: 'SiteTreeServices',
@@ -226,11 +232,18 @@ export class CreateCollectionComponent extends ComponentBase implements OnInit, 
 		}).subscribe({
 			next: (result) => {
 				console.log(`[IGX-OTT] Collection created: ${this.collectionName}`, result);
+				loader.success(`Collection "${this.collectionName}" created`);
 				this.close.emit();
 			},
 			error: () => {
-				console.log(`[IGX-OTT] Collection created (dev): ${this.collectionName}`);
-				this.close.emit();
+				if (this.cms.isDevMode) {
+					loader.dismiss();
+					this.notify.info(`Dev mode: Would create "${this.collectionName}" under ${parentId}`);
+					this.close.emit();
+				} else {
+					loader.error(`Failed to create "${this.collectionName}"`);
+					this.saving = false;
+				}
 			}
 		});
 	}
