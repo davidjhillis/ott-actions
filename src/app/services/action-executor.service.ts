@@ -147,9 +147,10 @@ export class ActionExecutorService {
 	/**
 	 * Calls a CMS API service method via CMSCommunicationsService Observable.
 	 * Shows loading → success/error toast notifications.
+	 * Automatically maps PageCommandsServices to AssetServices for DAM assets.
 	 */
 	private callCmsApi(action: ActionDefinition): void {
-		const { cmsService, cmsMethod, postCall, confirmBefore } = action.handler;
+		let { cmsService, cmsMethod, postCall, confirmBefore } = action.handler;
 
 		// Handle legacy endpoint pattern
 		if (!cmsService && action.handler.endpoint) {
@@ -176,6 +177,13 @@ export class ActionExecutorService {
 		// Get the current asset context for the API call
 		const ctx = this.assetContextService.getCurrentContext();
 		const args = ctx?.id ? [ctx.id] : [];
+
+		// For DAM assets (IDs starting with 'a/'), use AssetServices instead of PageCommandsServices
+		const isAsset = ctx?.id?.startsWith('a/');
+		if (isAsset && cmsService === 'PageCommandsServices') {
+			cmsService = 'AssetServices';
+			console.log(`[IGX-OTT] Mapped PageCommandsServices → AssetServices for asset ${ctx?.id}`);
+		}
 
 		// Show loading toast
 		const loader = this.notify.loading(`${action.label}...`);
