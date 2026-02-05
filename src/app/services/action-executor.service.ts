@@ -178,11 +178,11 @@ export class ActionExecutorService {
 		const ctx = this.assetContextService.getCurrentContext();
 		const args = ctx?.id ? [ctx.id] : [];
 
-		// For DAM assets (IDs starting with 'a/'), use AssetServices instead of PageCommandsServices
+		// For DAM assets (IDs starting with 'a/'), use FileBrowserServices instead of PageCommandsServices
 		const isAsset = ctx?.id?.startsWith('a/');
 		if (isAsset && cmsService === 'PageCommandsServices') {
-			cmsService = 'AssetServices';
-			console.log(`[IGX-OTT] Mapped PageCommandsServices → AssetServices for asset ${ctx?.id}`);
+			cmsService = 'FileBrowserServices';
+			console.log(`[IGX-OTT] Mapped PageCommandsServices → FileBrowserServices for asset ${ctx?.id}`);
 		}
 
 		// Show loading toast
