@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, NgZone, OnDestroy, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ComponentBase } from '../../ComponentBase';
 import { ActionBarConfig, ActionDefinition, ActionGroup } from '../../models/action.model';
@@ -132,7 +132,7 @@ export class ActionBarComponent extends ComponentBase implements OnInit, OnDestr
 
 	isCollapsed = false;
 
-	constructor(ele: ElementRef) {
+	constructor(ele: ElementRef, private ngZone: NgZone) {
 		super(ele);
 	}
 
@@ -176,8 +176,12 @@ export class ActionBarComponent extends ComponentBase implements OnInit, OnDestr
 			event.stopPropagation();
 			event.preventDefault();
 		}
-		this.isCollapsed = !this.isCollapsed;
-		console.log(`[IGX-OTT] Action bar ${this.isCollapsed ? 'collapsed' : 'expanded'}`);
+		// Run inside Angular zone to trigger change detection
+		// (clicks in top frame are outside iframe's zone)
+		this.ngZone.run(() => {
+			this.isCollapsed = !this.isCollapsed;
+			console.log(`[IGX-OTT] Action bar ${this.isCollapsed ? 'collapsed' : 'expanded'}`);
+		});
 	}
 
 	onActionClick(action: ActionDefinition): void {
