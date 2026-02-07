@@ -13,8 +13,8 @@ import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 	imports: [CommonModule, ActionGroupComponent, LucideIconComponent],
 	template: `
 		<div class="action-bar" [class.collapsed]="isCollapsed">
-			<div class="action-bar-toggle" (click)="toggleCollapse()" title="Toggle Actions">
-				<ott-icon [name]="isCollapsed ? 'chevron-left' : 'chevron-right'" [size]="12"></ott-icon>
+			<div class="action-bar-toggle" (click)="toggleCollapse($event)" [title]="isCollapsed ? 'Expand Actions' : 'Collapse Actions'">
+				<ott-icon [name]="isCollapsed ? 'chevron-left' : 'chevron-right'" [size]="14"></ott-icon>
 			</div>
 			<div class="action-bar-content" *ngIf="!isCollapsed">
 				<div class="action-bar-header">
@@ -49,23 +49,33 @@ import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 			position: relative;
 		}
 		.action-bar.collapsed {
-			width: 24px;
+			width: 20px;
+		}
+		.action-bar.collapsed .action-bar-toggle {
+			border-right: none;
 		}
 		.action-bar-toggle {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			width: 24px;
-			min-width: 24px;
+			width: 20px;
+			min-width: 20px;
 			cursor: pointer;
 			background: var(--ott-bg-muted);
 			border-right: 1px solid var(--ott-border);
 			color: var(--ott-text-muted);
 			transition: background-color 0.15s, color 0.15s;
+			user-select: none;
+			-webkit-user-select: none;
+			z-index: 10;
 		}
 		.action-bar-toggle:hover {
-			background: var(--ott-bg-hover);
-			color: var(--ott-text);
+			background: var(--ott-primary-light);
+			color: var(--ott-primary);
+		}
+		.action-bar-toggle:active {
+			background: var(--ott-primary);
+			color: white;
 		}
 		.action-bar-content {
 			display: flex;
@@ -161,8 +171,13 @@ export class ActionBarComponent extends ComponentBase implements OnInit, OnDestr
 		return true;
 	}
 
-	toggleCollapse(): void {
+	toggleCollapse(event?: MouseEvent): void {
+		if (event) {
+			event.stopPropagation();
+			event.preventDefault();
+		}
 		this.isCollapsed = !this.isCollapsed;
+		console.log(`[IGX-OTT] Action bar ${this.isCollapsed ? 'collapsed' : 'expanded'}`);
 	}
 
 	onActionClick(action: ActionDefinition): void {

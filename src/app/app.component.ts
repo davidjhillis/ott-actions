@@ -78,9 +78,9 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 					if (event.constructor.name === 'NavigationEnd') {
 						this.mainComponentService.hideMainComponent();
 
-						// Show/hide action bar based on whether we're in a content view
+						// Show/hide action bar based on whether we're in the Assets section
 						const url = ngref.router.routerState?.snapshot?.url || '';
-						if (this.isContentView(url)) {
+						if (this.isAssetsView(url)) {
 							this.mainComponentService.createActionBar();
 							this.mainComponentService.showActionBar();
 						} else {
@@ -111,12 +111,12 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 		setTimeout(() => {
 			this.mainComponentService.createUtilButton();
 
-			// Create action bar if we're in a content view (Site or Assets)
+			// Create action bar if we're in the Assets section
 			const topWindow = window.top as any;
 			const router = topWindow?.NG_REF?.router;
 			if (router) {
 				const url = router.routerState?.snapshot?.url || '';
-				if (this.isContentView(url)) {
+				if (this.isAssetsView(url)) {
 					this.mainComponentService.createActionBar();
 				}
 			}
@@ -140,10 +140,11 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 	}
 
 	/**
-	 * Checks if the current CMS URL is a content view (Site tree or Assets)
+	 * Checks if the current CMS URL is in the Assets section
 	 * where the action bar should be visible.
 	 */
-	private isContentView(url: string): boolean {
-		return url.includes('site/') || url.includes('asset');
+	private isAssetsView(url: string): boolean {
+		// Only show action bar in assets section (DAM), not in site, admin, etc.
+		return url.includes('/assets/') || url.includes('assets/');
 	}
 }
