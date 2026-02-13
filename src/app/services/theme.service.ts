@@ -11,10 +11,11 @@ import { Injectable } from '@angular/core';
  * is hidden by blanking the ::before content.
  */
 const OTT_ICON_OVERRIDES_CSS = `
-span.igx-fa-asset-tree::before {
+/* Scope to nav-button only (left sidebar), not the top navigation bar */
+nav-button span.igx-fa-asset-tree::before {
   content: '' !important;
 }
-span.igx-fa-asset-tree {
+nav-button span.igx-fa-asset-tree {
   display: inline-block !important;
   width: 28px !important;
   height: 28px !important;
