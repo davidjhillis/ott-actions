@@ -11,10 +11,13 @@ import { Injectable } from '@angular/core';
  * is hidden by blanking the ::before content.
  */
 const OTT_ICON_OVERRIDES_CSS = `
-/* Scope to nav-button only (left sidebar), not the top navigation bar */
+/* Left sidebar Asset Tree icon: replace font glyph with grid mosaic SVG.
+   Target utility-button context (sidebar) only — do NOT touch the top nav bar. */
+utility-button span.igx-fa-asset-tree::before,
 nav-button span.igx-fa-asset-tree::before {
   content: '' !important;
 }
+utility-button span.igx-fa-asset-tree,
 nav-button span.igx-fa-asset-tree {
   display: inline-block !important;
   width: 28px !important;
