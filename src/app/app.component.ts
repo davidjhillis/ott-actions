@@ -103,11 +103,8 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 
 	private _initCmsComponents() {
 		setTimeout(() => {
-			// Create the Zap icon button in the CMS left sidebar
+			// Create the Zap icon button in the CMS left sidebar (2nd position, after Asset Tree)
 			this.mainComponentService.createUtilButton();
-
-			// Replace the Asset Tree icon with a files icon
-			this.mainComponentService.customizeSidebarIcons();
 		}, 300);
 	}
 

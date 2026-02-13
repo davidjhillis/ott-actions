@@ -5,6 +5,26 @@ import { Injectable } from '@angular/core';
  * This string mirrors the tokens in ott-theme.less so that
  * components rendered inside the top frame resolve var(--ott-*).
  */
+/**
+ * CSS override to replace the CMS Asset Tree icon (igx-fa-asset-tree)
+ * with a Lucide file-text SVG via background-image. The icon font glyph
+ * is hidden by blanking the ::before content.
+ */
+const OTT_ICON_OVERRIDES_CSS = `
+span.igx-fa-asset-tree::before {
+  content: '' !important;
+}
+span.igx-fa-asset-tree {
+  display: inline-block !important;
+  width: 28px !important;
+  height: 28px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%2353ace3' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z'/%3E%3Cpath d='M14 2v4a2 2 0 0 0 2 2h4'/%3E%3Cpath d='M10 12h4'/%3E%3Cpath d='M10 16h4'/%3E%3C/svg%3E") !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+}
+`;
+
 const OTT_THEME_CSS = `
 :root {
   --ott-font: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -83,6 +103,12 @@ export class ThemeService {
 		style.id = 'ott-theme';
 		style.textContent = OTT_THEME_CSS;
 		topDoc.head.appendChild(style);
+
+		// Inject icon overrides (replaces Asset Tree icon)
+		const iconStyle = topDoc.createElement('style');
+		iconStyle.id = 'ott-icon-overrides';
+		iconStyle.textContent = OTT_ICON_OVERRIDES_CSS;
+		topDoc.head.appendChild(iconStyle);
 
 		this._injected = true;
 		console.log('[IGX-OTT] Theme injected into top frame');
