@@ -240,6 +240,53 @@ export class MainComponentService extends ComponentBase {
 	}
 
 	/**
+	 * Replaces the CMS Asset Tree (navButton) icon with a "files" icon
+	 * so it's visually distinct from the Site Tree icon.
+	 */
+	public customizeSidebarIcons(): void {
+		const topWindow = window.top as any;
+		if (!topWindow) return;
+
+		try {
+			// Find the Asset Tree icon: <span class="igx-fa igx-fa-asset-tree">
+			const assetTreeIcon = topWindow.document.querySelector('span.igx-fa-asset-tree') as HTMLElement;
+			if (!assetTreeIcon) {
+				console.warn('[IGX-OTT] Asset Tree icon (span.igx-fa-asset-tree) not found');
+				return;
+			}
+
+			// Skip if we've already customized it
+			if (topWindow.document.getElementById('ott-nav-icon')) return;
+
+			// Hide the original icon
+			assetTreeIcon.style.display = 'none';
+
+			// Insert a "files" SVG icon (Lucide file-text style, matching CMS icon sizes)
+			const svg = topWindow.document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+			svg.setAttribute('width', '28');
+			svg.setAttribute('height', '28');
+			svg.setAttribute('viewBox', '0 0 24 24');
+			svg.setAttribute('fill', 'none');
+			svg.setAttribute('stroke', '#53ace3');
+			svg.setAttribute('stroke-width', '1.75');
+			svg.setAttribute('stroke-linecap', 'round');
+			svg.setAttribute('stroke-linejoin', 'round');
+			svg.innerHTML = `
+				<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+				<path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+				<path d="M10 12h4"/>
+				<path d="M10 16h4"/>
+			`;
+			svg.id = 'ott-nav-icon';
+			assetTreeIcon.parentElement?.insertBefore(svg, assetTreeIcon);
+
+			console.log('[IGX-OTT] Replaced Asset Tree icon with files icon');
+		} catch (e) {
+			console.warn('[IGX-OTT] Could not customize sidebar icons:', e);
+		}
+	}
+
+	/**
 	 * Checks if the current URL is in the Assets section
 	 */
 	private isAssetsView(url: string): boolean {

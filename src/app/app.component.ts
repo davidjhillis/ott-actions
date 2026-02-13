@@ -105,6 +105,9 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 		setTimeout(() => {
 			// Create the Zap icon button in the CMS left sidebar
 			this.mainComponentService.createUtilButton();
+
+			// Replace the Asset Tree icon with a files icon
+			this.mainComponentService.customizeSidebarIcons();
 		}, 300);
 	}
 
