@@ -13,7 +13,7 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			[title]="action.description || action.label"
 			(click)="onActionClick()">
 			<span class="action-icon">
-				<ott-icon [name]="action.icon" [size]="15"></ott-icon>
+				<ott-icon [name]="action.icon" [size]="18"></ott-icon>
 			</span>
 			<span class="action-label">{{ action.label }}</span>
 		</button>
@@ -23,14 +23,15 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 		.action-item {
 			display: flex;
 			align-items: center;
-			gap: 8px;
+			gap: 10px;
 			width: 100%;
-			padding: 7px 12px;
+			padding: 8px 12px;
 			border: none;
 			background: none;
-			color: var(--ott-text);
-			font-family: var(--ott-font);
-			font-size: 13px;
+			color: #292B33;
+			font-family: Helvetica, Arial, sans-serif;
+			font-size: 14px;
+			font-weight: normal;
 			cursor: pointer;
 			border-radius: var(--ott-radius-md);
 			text-align: left;
@@ -44,7 +45,7 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			cursor: not-allowed;
 		}
 		.action-icon {
-			width: 16px;
+			width: 20px;
 			text-align: center;
 			color: var(--ott-primary);
 			flex-shrink: 0;

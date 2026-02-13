@@ -44,7 +44,7 @@ import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 			flex-direction: column;
 			height: 100%;
 			background: var(--ott-bg);
-			font-family: var(--ott-font);
+			font-family: Helvetica, Arial, sans-serif;
 		}
 		.action-panel-header {
 			display: flex;
@@ -56,9 +56,8 @@ import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 		.action-panel-header h3 {
 			margin: 0;
 			font-size: 14px;
-			font-weight: 600;
-			color: var(--ott-text);
-			letter-spacing: 0.01em;
+			font-weight: normal;
+			color: #292B33;
 		}
 		.action-panel-body {
 			flex: 1;
@@ -72,15 +71,15 @@ import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 		.manage-actions-btn {
 			display: flex;
 			align-items: center;
-			gap: 6px;
+			gap: 8px;
 			width: 100%;
-			padding: 7px 8px;
+			padding: 8px 10px;
 			border: none;
 			background: none;
 			color: var(--ott-primary);
-			font-family: var(--ott-font);
-			font-size: 12px;
-			font-weight: 500;
+			font-family: Helvetica, Arial, sans-serif;
+			font-size: 14px;
+			font-weight: normal;
 			cursor: pointer;
 			border-radius: var(--ott-radius-md);
 			transition: background-color 0.15s;

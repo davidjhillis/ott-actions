@@ -34,22 +34,22 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			display: flex;
 			align-items: center;
 			gap: 6px;
-			padding: 8px 10px;
+			padding: 8px 12px;
 			cursor: pointer;
-			font-family: var(--ott-font);
-			font-size: 11px;
-			font-weight: 600;
+			font-family: Helvetica, Arial, sans-serif;
+			font-size: 12px;
+			font-weight: normal;
 			text-transform: uppercase;
-			color: var(--ott-text-secondary);
+			color: #6b7280;
 			letter-spacing: 0.5px;
 			user-select: none;
 			transition: color 0.15s;
 		}
 		.group-header:hover {
-			color: var(--ott-text);
+			color: #292B33;
 		}
 		.collapse-icon {
-			width: 12px;
+			width: 14px;
 			display: flex;
 			align-items: center;
 			justify-content: center;
