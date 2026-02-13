@@ -99,7 +99,6 @@ export class UtilButtonComponent extends ComponentBase implements OnInit, OnDest
 			this._hookupUtilbarInvoke(utilbar);
 
 			utilbar.navButton.routeChanged = false;
-			utilbar.currentButton = null;
 
 			this.current();
 
@@ -107,6 +106,10 @@ export class UtilButtonComponent extends ComponentBase implements OnInit, OnDest
 			utilbar.utilButtons.forEach((b: any) => {
 				b.uncurrent();
 			});
+
+			// Register ourselves as the current button so the CMS
+			// can call uncurrent() on us when switching panels
+			utilbar.currentButton = this;
 
 			// Get or create the action panel component
 			let actionPanelRef = this.app.getActionPanel();

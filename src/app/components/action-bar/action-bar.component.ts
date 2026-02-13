@@ -107,6 +107,26 @@ export class ActionBarComponent extends ComponentBase implements OnInit, OnDestr
 		this.cleanup();
 	}
 
+	/**
+	 * Shows the action panel.
+	 * Required by the CMS utilbar panelToggle handler.
+	 */
+	public show(): void {
+		if (this.ele?.nativeElement) {
+			this.ele.nativeElement.style.display = 'block';
+		}
+	}
+
+	/**
+	 * Hides the action panel.
+	 * Required by the CMS utilbar panelToggle handler.
+	 */
+	public hide(): void {
+		if (this.ele?.nativeElement) {
+			this.ele.nativeElement.style.display = 'none';
+		}
+	}
+
 	get sortedGroups(): ActionGroup[] {
 		return [...this.config.groups].sort((a, b) => a.order - b.order);
 	}
