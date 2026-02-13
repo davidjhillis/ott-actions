@@ -15,6 +15,10 @@ import { ActionDefinition } from './models/action.model';
  *
  * This component is responsible for initializing the IGX-OTT module components
  * and coordinating their interactions with the CMS.
+ *
+ * The Actions panel is shown in the CMS left sidebar via the utility button.
+ * Clicking the Zap icon in the left icon bar shows the Actions panel,
+ * replacing the Asset Tree view. Clicking Asset Tree restores it.
  */
 @Component({
 	selector: '[igx-ott-root]',
@@ -27,7 +31,9 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 	/** Dev mode: true when not running inside CMS iframe */
 	devMode = false;
 	showActionManager = false;
-	
+	/** Dev mode: which left panel is active */
+	activePanel: 'tree' | 'actions' = 'actions';
+
 	constructor(
 		private mainComponentService: MainComponentService,
 		private dynamicComponentService: DynamicComponentService,
@@ -53,7 +59,7 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 
 		// Inject design tokens + Geist font into CMS top frame
 		this.themeService.injectIntoTopFrame();
-		
+
 		// Wire up action execution
 		this.observableSubTeardowns.push(
 			this.mainComponentService.onActionExecute.subscribe(action => {
@@ -68,61 +74,40 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 			})
 		);
 
-		// Note: We no longer create a topbar button. The action bar
-		// appears automatically in Site/Assets views.
-		
 		// Add router navigation event listener
 		if (ngref.router) {
 			this.observableSubTeardowns.push(
 				ngref.router.events.subscribe((event: any) => {
 					if (event.constructor.name === 'NavigationEnd') {
 						this.mainComponentService.hideMainComponent();
-
-						// Show/hide action bar based on whether we're in the Assets section
-						const url = ngref.router.routerState?.snapshot?.url || '';
-						if (this.isAssetsView(url)) {
-							this.mainComponentService.createActionBar();
-							this.mainComponentService.showActionBar();
-						} else {
-							this.mainComponentService.hideActionBar();
-						}
 					}
 				})
 			);
 		}
 	}
-	
+
 	ngAfterViewInit(): void {
 		if (!this.devMode) {
-			// Delay to let CMS DOM settle, then create action bar
+			// Delay to let CMS DOM settle, then create the Actions button in the left sidebar
 			this._initCmsComponents();
 		}
 	}
-	
+
 	ngOnDestroy(): void {
 		// Clean up subscriptions
 		this.cleanup();
-		
+
 		// Destroy all components
 		this.dynamicComponentService.destroyAllComponents();
 	}
-	
+
 	private _initCmsComponents() {
 		setTimeout(() => {
+			// Create the Zap icon button in the CMS left sidebar
 			this.mainComponentService.createUtilButton();
-
-			// Create action bar if we're in the Assets section
-			const topWindow = window.top as any;
-			const router = topWindow?.NG_REF?.router;
-			if (router) {
-				const url = router.routerState?.snapshot?.url || '';
-				if (this.isAssetsView(url)) {
-					this.mainComponentService.createActionBar();
-				}
-			}
 		}, 300);
 	}
-	
+
 	/** Dev mode: handle action clicks */
 	onDevActionClick(action: ActionDefinition): void {
 		console.log(`[IGX-OTT] Dev action: ${action.id} (${action.handler.type})`);
@@ -137,14 +122,5 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 	/** Dev mode: close Action Manager */
 	onDevCloseManager(): void {
 		this.showActionManager = false;
-	}
-
-	/**
-	 * Checks if the current CMS URL is in the Assets section
-	 * where the action bar should be visible.
-	 */
-	private isAssetsView(url: string): boolean {
-		// Only show action bar in assets section (DAM), not in site, admin, etc.
-		return url.includes('/assets/') || url.includes('assets/');
 	}
 }

@@ -12,6 +12,60 @@
   </div>
 
   <div class="dev-layout">
+    <!-- Simulated CMS left icon bar -->
+    <div class="dev-icon-bar">
+      <button class="dev-icon-btn" [class.active]="activePanel === 'tree'" (click)="activePanel = 'tree'" title="Asset Tree">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </button>
+      <button class="dev-icon-btn" title="Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <button class="dev-icon-btn" [class.active]="activePanel === 'actions'" (click)="activePanel = 'actions'" title="Actions">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="dev-icon-btn" title="Search">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Simulated CMS left panel -->
+    <div class="dev-left-panel">
+      <!-- Asset Tree view -->
+      <div class="dev-tree-panel" *ngIf="activePanel === 'tree'">
+        <div class="dev-panel-header">Asset Tree</div>
+        <div class="dev-tree-content">
+          <div class="dev-tree-item root">Assets</div>
+          <div class="dev-tree-item indent-1">images_o</div>
+          <div class="dev-tree-item indent-2">dita</div>
+          <div class="dev-tree-item indent-1">Standards Documents</div>
+          <div class="dev-tree-item indent-1">stylesheets</div>
+          <div class="dev-tree-item indent-1">Test</div>
+          <div class="dev-tree-item indent-1">Views</div>
+          <div class="dev-tree-item root">Recycle Folder</div>
+        </div>
+      </div>
+
+      <!-- Actions panel view -->
+      <div class="dev-actions-panel" *ngIf="activePanel === 'actions'">
+        <app-action-bar
+          [config]="actionConfigService.getConfig()"
+          (actionExecute)="onDevActionClick($event)"
+          (manageActions)="onDevManageActions()">
+        </app-action-bar>
+      </div>
+    </div>
+
     <!-- Simulated CMS content area -->
     <div class="dev-cms-area">
       <div class="dev-toolbar">
@@ -35,13 +89,6 @@
         </table>
       </div>
     </div>
-
-    <!-- Action Bar -->
-    <app-action-bar
-      [config]="actionConfigService.getConfig()"
-      (actionExecute)="onDevActionClick($event)"
-      (manageActions)="onDevManageActions()">
-    </app-action-bar>
   </div>
 
   <!-- Action Manager overlay -->

@@ -12,94 +12,60 @@ import { DEFAULT_ACTION_BAR_CONFIG } from './default-actions';
 	standalone: true,
 	imports: [CommonModule, ActionGroupComponent, LucideIconComponent],
 	template: `
-		<div class="action-bar" [class.collapsed]="isCollapsed">
-			<div class="action-bar-toggle" (click)="toggleCollapse($event)" [title]="isCollapsed ? 'Expand Actions' : 'Collapse Actions'">
-				<ott-icon [name]="isCollapsed ? 'chevron-left' : 'chevron-right'" [size]="14"></ott-icon>
+		<div class="action-panel">
+			<div class="action-panel-header">
+				<ott-icon name="zap" [size]="15" color="var(--ott-primary)"></ott-icon>
+				<h3>Actions</h3>
 			</div>
-			<div class="action-bar-content" *ngIf="!isCollapsed">
-				<div class="action-bar-header">
-					<h3>Actions</h3>
-				</div>
-				<div class="action-bar-body">
-					<app-action-group
-						*ngFor="let group of sortedGroups"
-						[group]="group"
-						[actions]="getActionsForGroup(group.id)"
-						(actionClick)="onActionClick($event)">
-					</app-action-group>
-				</div>
-				<div class="action-bar-footer">
-					<button class="manage-actions-btn" (click)="onManageActions()">
-						<ott-icon name="sliders-horizontal" [size]="14"></ott-icon>
-						Manage Actions...
-					</button>
-				</div>
+			<div class="action-panel-body">
+				<app-action-group
+					*ngFor="let group of sortedGroups"
+					[group]="group"
+					[actions]="getActionsForGroup(group.id)"
+					(actionClick)="onActionClick($event)">
+				</app-action-group>
+			</div>
+			<div class="action-panel-footer">
+				<button class="manage-actions-btn" (click)="onManageActions()">
+					<ott-icon name="sliders-horizontal" [size]="14"></ott-icon>
+					Manage Actions...
+				</button>
 			</div>
 		</div>
 	`,
 	styles: [`
-		:host { display: block; height: 100%; }
-		.action-bar {
-			display: flex;
-			flex-direction: row;
+		:host {
+			display: block;
 			height: 100%;
-			background: var(--ott-bg);
-			border-left: 1px solid var(--ott-border);
-			font-family: var(--ott-font);
-			position: relative;
+			width: 100%;
 		}
-		.action-bar.collapsed {
-			width: 20px;
-		}
-		.action-bar.collapsed .action-bar-toggle {
-			border-right: none;
-		}
-		.action-bar-toggle {
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			width: 20px;
-			min-width: 20px;
-			cursor: pointer;
-			background: var(--ott-bg-muted);
-			border-right: 1px solid var(--ott-border);
-			color: var(--ott-text-muted);
-			transition: background-color 0.15s, color 0.15s;
-			user-select: none;
-			-webkit-user-select: none;
-			z-index: 10;
-		}
-		.action-bar-toggle:hover {
-			background: var(--ott-primary-light);
-			color: var(--ott-primary);
-		}
-		.action-bar-toggle:active {
-			background: var(--ott-primary);
-			color: white;
-		}
-		.action-bar-content {
+		.action-panel {
 			display: flex;
 			flex-direction: column;
-			width: 224px;
-			overflow: hidden;
+			height: 100%;
+			background: var(--ott-bg);
+			font-family: var(--ott-font);
 		}
-		.action-bar-header {
-			padding: 12px 12px 8px;
-			border-bottom: 1px solid var(--ott-border-light);
+		.action-panel-header {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 10px 12px;
+			border-bottom: 1px solid var(--ott-border);
 		}
-		.action-bar-header h3 {
+		.action-panel-header h3 {
 			margin: 0;
-			font-size: 13px;
+			font-size: 14px;
 			font-weight: 600;
 			color: var(--ott-text);
-			letter-spacing: 0.02em;
+			letter-spacing: 0.01em;
 		}
-		.action-bar-body {
+		.action-panel-body {
 			flex: 1;
 			overflow-y: auto;
 			padding: 4px 0;
 		}
-		.action-bar-footer {
+		.action-panel-footer {
 			border-top: 1px solid var(--ott-border-light);
 			padding: 8px;
 		}
@@ -130,14 +96,12 @@ export class ActionBarComponent extends ComponentBase implements OnInit, OnDestr
 	@Output() actionExecute = new EventEmitter<ActionDefinition>();
 	@Output() manageActions = new EventEmitter<void>();
 
-	isCollapsed = false;
-
 	constructor(ele: ElementRef, private ngZone: NgZone) {
 		super(ele);
 	}
 
 	ngOnInit(): void {
-		console.log('[IGX-OTT] Action bar initialized');
+		console.log('[IGX-OTT] Action panel initialized');
 	}
 
 	ngOnDestroy(): void {
@@ -171,26 +135,18 @@ export class ActionBarComponent extends ComponentBase implements OnInit, OnDestr
 		return true;
 	}
 
-	toggleCollapse(event?: MouseEvent): void {
-		if (event) {
-			event.stopPropagation();
-			event.preventDefault();
-		}
-		// Run inside Angular zone to trigger change detection
-		// (clicks in top frame are outside iframe's zone)
+	onActionClick(action: ActionDefinition): void {
+		// Run inside Angular zone for cross-frame change detection
 		this.ngZone.run(() => {
-			this.isCollapsed = !this.isCollapsed;
-			console.log(`[IGX-OTT] Action bar ${this.isCollapsed ? 'collapsed' : 'expanded'}`);
+			console.log(`[IGX-OTT] Action clicked: ${action.id}`);
+			this.actionExecute.emit(action);
 		});
 	}
 
-	onActionClick(action: ActionDefinition): void {
-		console.log(`[IGX-OTT] Action clicked: ${action.id}`);
-		this.actionExecute.emit(action);
-	}
-
 	onManageActions(): void {
-		console.log('[IGX-OTT] Manage actions clicked');
-		this.manageActions.emit();
+		this.ngZone.run(() => {
+			console.log('[IGX-OTT] Manage actions clicked');
+			this.manageActions.emit();
+		});
 	}
 }

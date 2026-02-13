@@ -20,7 +20,7 @@ export class MainComponentService extends ComponentBase {
 	private utilButtonRef?: ComponentRef<UtilButtonComponent>;
 	private microFrontendPanelRef?: ComponentRef<MicroFrontendPanelComponent>;
 	private microFrontendUtilPaneRef?: ComponentRef<MicroFrontendUtilPaneComponent>;
-	private actionBarRef?: ComponentRef<ActionBarComponent>;
+	private actionPanelRef?: ComponentRef<ActionBarComponent>;
 
 	// Panel toggle event
 	public onPanelToggle: EventEmitter<any> = new EventEmitter<any>();
@@ -30,7 +30,7 @@ export class MainComponentService extends ComponentBase {
 
 	// Manage actions event (opens admin builder)
 	public onManageActions: EventEmitter<void> = new EventEmitter<void>();
-	
+
 	constructor(
 		private dynamicComponentService: DynamicComponentService,
 		private actionConfigService: ActionConfigService,
@@ -38,25 +38,25 @@ export class MainComponentService extends ComponentBase {
 	) {
 		super();
 
-		// Subscribe to config changes to update action bar
+		// Subscribe to config changes to update action panel
 		this.observableSubTeardowns.push(
 			this.actionConfigService.configChanged.subscribe(config => {
-				if (this.actionBarRef?.instance) {
-					this.actionBarRef.instance.config = config;
+				if (this.actionPanelRef?.instance) {
+					this.actionPanelRef.instance.config = config;
 				}
 			})
 		);
 
-		// Subscribe to asset context changes to update action bar
+		// Subscribe to asset context changes to update action panel
 		this.observableSubTeardowns.push(
 			this.assetContextService.context$.subscribe(ctx => {
-				if (this.actionBarRef?.instance) {
-					this.actionBarRef.instance.context = ctx ?? undefined;
+				if (this.actionPanelRef?.instance) {
+					this.actionPanelRef.instance.context = ctx ?? undefined;
 				}
 			})
 		);
 	}
-	
+
 	/**
 	 * Creates a topbar button
 	 * @param container The container element to create the button in
@@ -65,56 +65,58 @@ export class MainComponentService extends ComponentBase {
 	public createTopbarButton(container: HTMLElement): ComponentRef<TopbarButtonComponent> {
 		// Create the button component
 		this.topbarButtonRef = this.dynamicComponentService.createComponent(TopbarButtonComponent, container);
-		
+
 		// Set the app reference
-		this.topbarButtonRef.instance.app = this;    
-		
+		this.topbarButtonRef.instance.app = this;
+
 		return this.topbarButtonRef;
 	}
 
     private getAssignButton() {
 		return (window.top as any).document.body.querySelector("utility-button span.fa-list")?.parentElement as HTMLElement;
 	}
-	
+
 	/**
-	 * Creates a util button in the toolbar
+	 * Creates the Actions icon button in the CMS left sidebar utility bar.
+	 * When clicked, it loads the Actions panel into the left panel area.
 	 */
 	public createUtilButton(): void {
 		// Find CMS util toolbar
 		const topWindow = window.top as any;
 		if (!topWindow) return;
-		
-		
+
+
 		// Find a reference button to position next to
 		const assignButton = this.getAssignButton();
 		if (!assignButton) {
 			console.error('[IGX-OTT] - Assign button not found');
 			return;
 		}
-		
+
 		// Create a container element for the button
 		const anchor = document.createElement('div');
 		assignButton.parentElement?.insertBefore(anchor, assignButton.nextSibling);
-		
+
 		// Create the util button component
 		this.utilButtonRef = this.dynamicComponentService.createComponent(UtilButtonComponent, anchor);
 		this.utilButtonRef.instance.app = this;
-		
-		// Check router events
+
+		// Check router events to show/hide button based on section
 		const router = (window.top as any).NG_REF?.router as Router;
 		if (router) {
-			// Check initial state
-			if (!router.routerState.snapshot.url.includes("site/")) {
+			// Check initial state - hide if not in assets section
+			const url = router.routerState?.snapshot?.url || '';
+			if (!this.isAssetsView(url)) {
 				if (this.utilButtonRef?.instance?.ele?.nativeElement) {
 					this.utilButtonRef.instance.ele.nativeElement.style.display = "none";
 				}
 			}
-			
+
 			// Subscribe to router events
 			this.observableSubTeardowns.push(router.events.subscribe(evt => {
 				if (evt.constructor.name === "NavigationEnd" && !!this.utilButtonRef) {
-					const inSitePane = router.routerState.snapshot.url.includes("site/");
-					if (!inSitePane) {
+					const currentUrl = router.routerState?.snapshot?.url || '';
+					if (!this.isAssetsView(currentUrl)) {
 						if (this.utilButtonRef?.instance?.ele?.nativeElement) {
 							this.utilButtonRef.instance.ele.nativeElement.style.display = "none";
 						}
@@ -127,7 +129,7 @@ export class MainComponentService extends ComponentBase {
 			}));
 		}
 	}
-	
+
 	/**
 	 * Creates the micro frontend panel
 	 * @param container The container element to create the panel in
@@ -138,7 +140,7 @@ export class MainComponentService extends ComponentBase {
 		this.microFrontendPanelRef = this.dynamicComponentService.createComponent(MicroFrontendPanelComponent, container);
 		return this.microFrontendPanelRef;
 	}
-	
+
 	/**
 	 * Creates the micro frontend util pane
 	 * @param container The container element to create the pane in
@@ -149,7 +151,7 @@ export class MainComponentService extends ComponentBase {
 		this.microFrontendUtilPaneRef = this.dynamicComponentService.createComponent(MicroFrontendUtilPaneComponent, container);
 		return this.microFrontendUtilPaneRef;
 	}
-	
+
 	/**
 	 * Gets the micro frontend panel if it exists
 	 * @returns Reference to the panel component or undefined
@@ -157,7 +159,7 @@ export class MainComponentService extends ComponentBase {
 	public getMicroFrontendPanel(): ComponentRef<MicroFrontendPanelComponent> | undefined {
 		return this.microFrontendPanelRef;
 	}
-	
+
 	/**
 	 * Gets the micro frontend util pane if it exists
 	 * @returns Reference to the util pane component or undefined
@@ -165,86 +167,47 @@ export class MainComponentService extends ComponentBase {
 	public getMicroFrontendUtilPane(): ComponentRef<MicroFrontendUtilPaneComponent> | undefined {
 		return this.microFrontendUtilPaneRef;
 	}
-	
+
 	/**
-	 * Creates the action bar in the CMS Assets view
-	 * Injects it as a right-side panel next to the asset content area
+	 * Creates the Actions panel component for the left sidebar.
+	 * This replaces the old right-side action bar.
+	 * @param container The host element for the component
+	 * @returns Reference to the created ActionBarComponent
 	 */
-	public createActionBar(): void {
-		if (this.actionBarRef) return; // Already created
+	public createActionPanel(container: HTMLElement): ComponentRef<ActionBarComponent> {
+		if (this.actionPanelRef) return this.actionPanelRef;
 
-		const topWindow = window.top as any;
-		if (!topWindow) return;
+		this.actionPanelRef = this.dynamicComponentService.createComponent(ActionBarComponent, container);
 
-		// Find the asset content area in the CMS
-		// The asset grid/table container that we'll attach the action bar beside
-		const assetContainer = topWindow.document.querySelector('#globalTabContainer .tab-content, #globalTabContainer');
-		if (!assetContainer) {
-			console.warn('[IGX-OTT] - Asset container not found, will retry');
-			return;
+		// Set initial config and context
+		this.actionPanelRef.instance.config = this.actionConfigService.getConfig();
+		const ctx = this.assetContextService.getCurrentContext();
+		if (ctx) {
+			this.actionPanelRef.instance.context = ctx;
 		}
 
-		// Create a host element for the action bar
-		const actionBarHost = topWindow.document.createElement('div');
-		actionBarHost.id = 'igx-ott-action-bar';
-		actionBarHost.style.cssText = 'position:absolute;right:0;top:0;bottom:0;z-index:100;';
-
-		// Insert into the asset container
-		assetContainer.style.position = 'relative';
-		assetContainer.appendChild(actionBarHost);
-
-		// Create the Angular component in the host element
-		this.actionBarRef = this.dynamicComponentService.createComponent(ActionBarComponent, actionBarHost);
-
-		// Set config from service
-		this.actionBarRef.instance.config = this.actionConfigService.getConfig();
-
-		// Wire up events
-		this.actionBarRef.instance.actionExecute.subscribe((action: ActionDefinition) => {
+		// Wire up action execution events
+		this.actionPanelRef.instance.actionExecute.subscribe((action: ActionDefinition) => {
 			console.log(`[IGX-OTT] Action executed: ${action.id}`);
 			this.onActionExecute.emit(action);
 		});
 
-		this.actionBarRef.instance.manageActions.subscribe(() => {
+		// Wire up manage actions event
+		this.actionPanelRef.instance.manageActions.subscribe(() => {
 			console.log('[IGX-OTT] Opening action manager');
 			this.onManageActions.emit();
 		});
 
-		console.log('[IGX-OTT] Action bar created');
+		console.log('[IGX-OTT] Action panel created for left sidebar');
+		return this.actionPanelRef;
 	}
 
 	/**
-	 * Shows the action bar (if it exists)
+	 * Gets the action panel component if it exists
+	 * @returns Reference to the ActionBarComponent or undefined
 	 */
-	public showActionBar(): void {
-		if (this.actionBarRef?.location?.nativeElement) {
-			const host = this.actionBarRef.location.nativeElement.parentElement;
-			if (host) host.style.display = '';
-		}
-	}
-
-	/**
-	 * Hides the action bar (if it exists)
-	 */
-	public hideActionBar(): void {
-		if (this.actionBarRef?.location?.nativeElement) {
-			const host = this.actionBarRef.location.nativeElement.parentElement;
-			if (host) host.style.display = 'none';
-		}
-	}
-
-	/**
-	 * Destroys the action bar component and its host element
-	 */
-	public destroyActionBar(): void {
-		if (this.actionBarRef) {
-			const host = this.actionBarRef.location.nativeElement;
-			this.dynamicComponentService.destroyComponent(this.actionBarRef.instance);
-			if (host?.parentElement) {
-				host.parentElement.removeChild(host);
-			}
-			this.actionBarRef = undefined;
-		}
+	public getActionPanel(): ComponentRef<ActionBarComponent> | undefined {
+		return this.actionPanelRef;
 	}
 
 	/**
@@ -256,47 +219,54 @@ export class MainComponentService extends ComponentBase {
 		if (this.topbarButtonRef?.instance) {
 			this.topbarButtonRef.instance.uncurrent();
 		}
-		
+
 		// Hide the util button's panel if it exists
 		if (this.utilButtonRef?.instance) {
 			this.utilButtonRef.instance.uncurrent();
 		}
-		
-		// 延迟销毁组件，确保UI先隐藏
+
+		// Delay destruction to let UI hide first
 		setTimeout(() => {
-			// 销毁microFrontendPanelRef
 			if (this.microFrontendPanelRef) {
 				this.dynamicComponentService.destroyComponent(this.microFrontendPanelRef.instance);
 				this.microFrontendPanelRef = undefined;
 			}
-			
-			// 销毁microFrontendUtilPaneRef
+
 			if (this.microFrontendUtilPaneRef) {
 				this.dynamicComponentService.destroyComponent(this.microFrontendUtilPaneRef.instance);
 				this.microFrontendUtilPaneRef = undefined;
 			}
-		}, 100); // 短暂延迟以确保UI先隐藏
+		}, 100);
 	}
-	
+
+	/**
+	 * Checks if the current URL is in the Assets section
+	 */
+	private isAssetsView(url: string): boolean {
+		return url.includes('/assets/') || url.includes('assets/');
+	}
+
 	ngOnDestroy(): void {
 		// Clean up components
 		if (this.topbarButtonRef) {
 			this.dynamicComponentService.destroyComponent(this.topbarButtonRef.instance);
 		}
-		
+
 		if (this.utilButtonRef) {
 			this.dynamicComponentService.destroyComponent(this.utilButtonRef.instance);
 		}
-		
+
 		if (this.microFrontendPanelRef) {
 			this.dynamicComponentService.destroyComponent(this.microFrontendPanelRef.instance);
 		}
-		
+
 		if (this.microFrontendUtilPaneRef) {
 			this.dynamicComponentService.destroyComponent(this.microFrontendUtilPaneRef.instance);
 		}
 
-		this.destroyActionBar();
+		if (this.actionPanelRef) {
+			this.dynamicComponentService.destroyComponent(this.actionPanelRef.instance);
+		}
 
 		// Call parent cleanup
 		this.cleanup();

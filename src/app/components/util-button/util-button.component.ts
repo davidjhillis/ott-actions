@@ -80,10 +80,11 @@ export class UtilButtonComponent extends ComponentBase implements OnInit, OnDest
 	}
 
 	/**
-	 * Handles the button click event
+	 * Handles the button click event.
+	 * Shows the Actions panel in the CMS left sidebar.
 	 */
 	public invoke(): void {
-		console.log('[IGX-OTT] Util button invoked');
+		console.log('[IGX-OTT] Actions button invoked');
 
 		// Get top window and access to NG_REF
 		const topWindow = window.top as any;
@@ -107,14 +108,14 @@ export class UtilButtonComponent extends ComponentBase implements OnInit, OnDest
 				b.uncurrent();
 			});
 
-			// Get or create the left pane component
-			let leftPaneRef = this.app.getMicroFrontendUtilPane();
+			// Get or create the action panel component
+			let actionPanelRef = this.app.getActionPanel();
 
-			if (!leftPaneRef) {
-				// If the left pane doesn't exist, create a temporary container and create the component
+			if (!actionPanelRef) {
+				// Create a temporary container, then create the action panel
 				const tempContainer = document.createElement('div');
 				document.body.appendChild(tempContainer);
-				leftPaneRef = this.app.createMicroFrontendUtilPane(tempContainer);
+				actionPanelRef = this.app.createActionPanel(tempContainer);
 			}
 
 			// Find the target container in the top window
@@ -124,22 +125,17 @@ export class UtilButtonComponent extends ComponentBase implements OnInit, OnDest
 				return;
 			}
 
-			// Move the component to the target container
-			const nativeElement = leftPaneRef.location.nativeElement;
+			// Move the action panel to the left panel target
+			const nativeElement = actionPanelRef.location.nativeElement;
 			targetContainer.appendChild(nativeElement);
 
 			// Set attachComponent and attachNode references
-			this.attachComponent = leftPaneRef.instance;
+			this.attachComponent = actionPanelRef.instance;
 			this.attachNode = nativeElement;
 
 			// Trigger panel toggle event
 			if (utilbar.onPanelToggle) {
 				utilbar.onPanelToggle.emit(this);
-			}
-
-			// Call show method on the component if it exists
-			if (this.attachComponent && typeof this.attachComponent.show === 'function') {
-				this.attachComponent.show();
 			}
 		}
 	}
