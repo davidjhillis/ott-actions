@@ -73,20 +73,18 @@ export class MainComponentService extends ComponentBase {
 	}
 
 	/**
-	 * Finds the CMS Asset Tree nav button element (the first icon in the sidebar).
+	 * Finds the utilbar container and the first button (Asset Tree navButton)
+	 * by using the assign button (fa-list) as a known reference point.
+	 * Returns the first child of the utilbar container (the navButton element).
 	 */
-	private getNavButtonElement(): HTMLElement | null {
-		const topWindow = window.top as any;
-		if (!topWindow) return null;
+	private getFirstSidebarButton(): HTMLElement | null {
+		const assignButton = this.getAssignButton();
+		if (!assignButton?.parentElement) return null;
 
-		// Find the Asset Tree icon span, then traverse up to the button container
-		const assetTreeSpan = topWindow.document.querySelector('span.igx-fa-asset-tree') as HTMLElement;
-		if (assetTreeSpan) {
-			// The span's parent is the button element (nav-button or similar)
-			return assetTreeSpan.closest('[tabindex]') as HTMLElement
-				|| assetTreeSpan.parentElement as HTMLElement;
-		}
-		return null;
+		// The assign button's parent is the utilbar container.
+		// The first child of that container is the navButton (Asset Tree).
+		const container = assignButton.parentElement;
+		return container.firstElementChild as HTMLElement || null;
 	}
 
 	/**
@@ -105,13 +103,13 @@ export class MainComponentService extends ComponentBase {
 		const topWindow = window.top as any;
 		if (!topWindow) return;
 
-		// Try to insert after the Asset Tree navButton (second position)
-		const navButtonEl = this.getNavButtonElement();
+		// Insert as 2nd item in the left sidebar (after Asset Tree navButton)
+		const firstButton = this.getFirstSidebarButton();
 		const anchor = document.createElement('div');
 
-		if (navButtonEl?.parentElement) {
-			navButtonEl.parentElement.insertBefore(anchor, navButtonEl.nextSibling);
-			console.log('[IGX-OTT] Zap button inserted after Asset Tree (2nd position)');
+		if (firstButton?.parentElement) {
+			firstButton.parentElement.insertBefore(anchor, firstButton.nextElementSibling);
+			console.log('[IGX-OTT] Zap button inserted as 2nd sidebar item');
 		} else {
 			// Fallback: insert after the list button
 			const assignButton = this.getAssignButton();
