@@ -251,27 +251,28 @@ export class MainComponentService extends ComponentBase {
 		const topWindow = window.top as any;
 		if (!topWindow) return;
 
-		// Find the native folder view container in the CMS
-		// The folder view lives in the main content area: #globalTabContainer or .tab-content
-		const container = topWindow.document.querySelector('#globalTabContainer .tab-content') ||
-			topWindow.document.querySelector('#globalTabContainer') ||
-			topWindow.document.querySelector('.main-content');
-
-		if (!container) {
-			console.warn('[IGX-OTT] Could not find CMS content area for folder view injection');
+		// Find the native <folder-view> Angular component in the CMS DOM.
+		// CMS hierarchy: #globalTabContainer > .splitcontainer > split > split-area > assetpane-hub > folder-view
+		const nativeFolder = topWindow.document.querySelector('folder-view') as HTMLElement;
+		if (!nativeFolder) {
+			console.warn('[IGX-OTT] Could not find native <folder-view> for injection');
 			return;
 		}
+
+		// The parent (assetpane-hub) is where we inject our view
+		const container = nativeFolder.parentElement;
+		if (!container) {
+			console.warn('[IGX-OTT] Could not find folder-view parent container');
+			return;
+		}
+
+		// Hide native folder view
+		nativeFolder.style.display = 'none';
 
 		// Create host element
 		const host = topWindow.document.createElement('div');
 		host.id = 'igx-ott-folder-view';
-		host.style.cssText = 'position:relative;z-index:1;';
-
-		// Hide native folder contents
-		const nativeFolder = container.querySelector('.folder-contents, .asset-folder-view, folder-view');
-		if (nativeFolder) {
-			(nativeFolder as HTMLElement).style.display = 'none';
-		}
+		host.style.cssText = 'position:relative;z-index:1;width:100%;height:100%;';
 
 		container.appendChild(host);
 
@@ -291,6 +292,13 @@ export class MainComponentService extends ComponentBase {
 			this.dynamicComponentService.destroyComponent(this.folderViewRef.instance);
 			host?.remove();
 			this.folderViewRef = undefined;
+
+			// Restore native folder view
+			const topWindow = window.top as any;
+			const nativeFolder = topWindow?.document?.querySelector('folder-view') as HTMLElement;
+			if (nativeFolder) {
+				nativeFolder.style.display = '';
+			}
 		}
 	}
 

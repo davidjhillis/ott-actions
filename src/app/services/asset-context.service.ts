@@ -88,8 +88,8 @@ export class AssetContextService implements OnDestroy {
 			return;
 		}
 
-		// Try DAM folder pattern: assets/assetfolders_123
-		const folderMatch = url.match(/assets\/(assetfolders_\d+)/i);
+		// Try DAM folder pattern: assets/af_123 or assets/assetfolders_123
+		const folderMatch = url.match(/assets\/(af_\d+|assetfolders_\d+)/i);
 		if (folderMatch) {
 			this.resolveAssetFolder(folderMatch[1]);
 			return;
@@ -180,18 +180,42 @@ export class AssetContextService implements OnDestroy {
 	/**
 	 * Resolve a DAM asset folder.
 	 */
-	private resolveAssetFolder(folderId: string): void {
-		if (folderId === this.currentXid) return;
-		this.currentXid = folderId;
+	private resolveAssetFolder(urlId: string): void {
+		if (urlId === this.currentXid) return;
+		this.currentXid = urlId;
 
-		// Asset folders are folders — set basic context
-		this.contextSubject.next({
-			id: folderId,
-			name: folderId,
-			isFolder: true,
-			path: ''
+		// Convert URL format (af_7) to API format (af/7)
+		const apiId = urlId.replace('_', '/');
+
+		this.cms.callService<any>({
+			service: 'AssetServices',
+			action: 'GetAssetFolderInfo',
+			args: [apiId]
+		}).subscribe({
+			next: (info) => {
+				const ctx: AssetContext = {
+					id: apiId,
+					name: info?.Name || urlId,
+					isFolder: true,
+					path: info?.Path || info?.FolderPath || '',
+					schema: info?.Schema || 'Folder',
+					workflowStatus: info?.WorkflowStatus || undefined,
+					parentId: info?.ParentId || undefined,
+				};
+				this.contextSubject.next(ctx);
+				console.log(`[IGX-OTT] Asset folder context: ${ctx.name} (${apiId})`);
+			},
+			error: () => {
+				// Fallback: basic context
+				this.contextSubject.next({
+					id: apiId,
+					name: urlId,
+					isFolder: true,
+					path: ''
+				});
+				console.log(`[IGX-OTT] Asset folder context (fallback): ${apiId}`);
+			}
 		});
-		console.log(`[IGX-OTT] Asset folder context: ${folderId}`);
 	}
 
 	ngOnDestroy(): void {
