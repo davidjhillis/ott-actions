@@ -114,14 +114,14 @@ Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 			display: flex; align-items: flex-start; justify-content: space-between;
 			margin-bottom: 14px;
 		}
-		.hc-name { font-size: 14px; font-weight: 600; color: var(--ott-text); }
-		.hc-timestamp { font-size: 11px; color: var(--ott-text-muted); margin-top: 1px; }
+		.hc-name { font-size: var(--ott-font-size-lg); font-weight: 600; color: var(--ott-text); }
+		.hc-timestamp { font-size: var(--ott-font-size-sm); color: var(--ott-text-muted); margin-top: 1px; }
 		.hc-actions { display: flex; gap: 4px; }
 		.action-btn {
 			display: inline-flex; align-items: center; gap: 4px;
-			padding: 5px 10px; border: 1px solid var(--ott-border-light);
+			padding: 6px 10px; border: 1px solid var(--ott-border-light);
 			border-radius: var(--ott-radius-md); background: var(--ott-bg);
-			cursor: pointer; font-size: 12px; font-family: var(--ott-font);
+			cursor: pointer; font-size: var(--ott-font-size-base); font-family: var(--ott-font);
 			font-weight: 500; color: var(--ott-text-secondary);
 			transition: all 0.12s;
 		}
@@ -154,18 +154,18 @@ Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 			text-align: center;
 			pointer-events: none;
 		}
-		.center-value { display: block; font-size: 22px; font-weight: 700; color: var(--ott-text); line-height: 1; }
-		.center-label { display: block; font-size: 10px; color: var(--ott-text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+		.center-value { display: block; font-size: var(--ott-font-size-xl); font-weight: 700; color: var(--ott-text); line-height: 1; }
+		.center-label { display: block; font-size: var(--ott-font-size-xs); color: var(--ott-text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
 
 		/* Legend */
 		.chart-legend { display: flex; flex-direction: column; gap: 3px; }
 		.legend-row {
 			display: flex; align-items: center; gap: 6px;
-			font-size: 11px; color: var(--ott-text-secondary);
+			font-size: var(--ott-font-size-sm); color: var(--ott-text-secondary);
 		}
 		.legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 		.legend-name { flex: 1; }
-		.legend-count { font-family: var(--ott-font-mono); font-size: 10px; color: var(--ott-text-muted); }
+		.legend-count { font-family: var(--ott-font-mono); font-size: var(--ott-font-size-xs); color: var(--ott-text-muted); }
 
 		/* Status table card */
 		.status-card {
@@ -174,14 +174,14 @@ Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 			overflow: hidden;
 			background: var(--ott-bg);
 		}
-		.status-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+		.status-table { width: 100%; border-collapse: collapse; font-size: var(--ott-font-size-base); }
 		.status-table th {
-			text-align: left; padding: 8px 12px; font-size: 10px; font-weight: 600;
+			text-align: left; padding: 8px 12px; font-size: var(--ott-font-size-xs); font-weight: 600;
 			text-transform: uppercase; letter-spacing: 0.3px; color: var(--ott-text-muted);
 			background: var(--ott-bg-muted); border-bottom: 1px solid var(--ott-border-light);
 		}
 		.status-table td {
-			padding: 7px 12px; color: var(--ott-text);
+			padding: 9px 12px; color: var(--ott-text);
 			border-bottom: 1px solid var(--ott-border-light);
 		}
 		.status-table .r { text-align: right; }
@@ -205,18 +205,18 @@ Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 		}
 		.expand-item {
 			display: flex; align-items: center; gap: 10px;
-			font-size: 11px; color: var(--ott-text-secondary);
-			padding: 3px 0;
+			font-size: var(--ott-font-size-sm); color: var(--ott-text-secondary);
+			padding: 4px 0;
 		}
 		.item-name {
 			flex: 1; font-family: var(--ott-font-mono);
-			font-size: 11px; color: var(--ott-text);
+			font-size: var(--ott-font-size-sm); color: var(--ott-text);
 			overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 		}
-		.item-meta { font-size: 10px; color: var(--ott-text-muted); white-space: nowrap; }
+		.item-meta { font-size: var(--ott-font-size-xs); color: var(--ott-text-muted); white-space: nowrap; }
 		.show-more {
 			border: none; background: none; cursor: pointer; padding: 2px 0;
-			font-size: 11px; font-family: var(--ott-font); color: var(--ott-primary);
+			font-size: var(--ott-font-size-sm); font-family: var(--ott-font); color: var(--ott-primary);
 			text-align: left;
 		}
 		.show-more:hover { text-decoration: underline; }

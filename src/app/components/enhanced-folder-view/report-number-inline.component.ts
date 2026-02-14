@@ -59,7 +59,7 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			padding: 6px 0;
 		}
 		.report-label {
-			font-size: 11px;
+			font-size: var(--ott-font-size-sm);
 			font-weight: 600;
 			text-transform: uppercase;
 			letter-spacing: 0.4px;
@@ -67,7 +67,7 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			min-width: 60px;
 		}
 		.report-value {
-			font-size: 14px;
+			font-size: var(--ott-font-size-base);
 			font-weight: 600;
 			font-family: var(--ott-font-mono);
 			color: var(--ott-primary);
@@ -85,9 +85,9 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			background: var(--ott-bg);
 			cursor: pointer;
 			color: var(--ott-text-secondary);
-			font-size: 11px;
+			font-size: var(--ott-font-size-sm);
 			font-family: var(--ott-font);
-			padding: 3px 8px;
+			padding: 4px 8px;
 			border-radius: var(--ott-radius-sm);
 			transition: all 0.15s;
 		}
@@ -109,10 +109,10 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 		}
 		.prefix-input {
 			width: 60px;
-			padding: 5px 8px;
+			padding: 6px 8px;
 			border: 1px solid var(--ott-border);
 			border-radius: var(--ott-radius-md);
-			font-size: 13px;
+			font-size: var(--ott-font-size-base);
 			font-family: var(--ott-font-mono);
 			text-align: center;
 			color: var(--ott-text);
@@ -121,10 +121,10 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 		.number-input {
 			flex: 1;
 			max-width: 180px;
-			padding: 5px 8px;
+			padding: 6px 8px;
 			border: 1px solid var(--ott-border);
 			border-radius: var(--ott-radius-md);
-			font-size: 13px;
+			font-size: var(--ott-font-size-base);
 			font-family: var(--ott-font-mono);
 			color: var(--ott-text);
 			background: var(--ott-bg);
@@ -146,23 +146,23 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 		}
 		.auto-btn:hover { background: var(--ott-bg-hover); }
 		.date-label {
-			font-size: 12px;
+			font-size: var(--ott-font-size-base);
 			color: var(--ott-text-secondary);
 		}
 		.date-input {
-			padding: 4px 8px;
+			padding: 5px 8px;
 			border: 1px solid var(--ott-border);
 			border-radius: var(--ott-radius-md);
-			font-size: 12px;
+			font-size: var(--ott-font-size-base);
 			font-family: var(--ott-font);
 			color: var(--ott-text);
 			background: var(--ott-bg);
 		}
 		.preview {
-			font-size: 12px;
+			font-size: var(--ott-font-size-sm);
 			color: var(--ott-text-secondary);
 			margin-top: 6px;
-			padding: 4px 8px;
+			padding: 5px 8px;
 			background: var(--ott-bg-subtle);
 			border-radius: var(--ott-radius-sm);
 			display: inline-block;
@@ -177,9 +177,9 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			margin-top: 8px;
 		}
 		.btn-cancel, .btn-save {
-			padding: 5px 12px;
+			padding: 6px 12px;
 			border-radius: var(--ott-radius-md);
-			font-size: 12px;
+			font-size: var(--ott-font-size-base);
 			font-family: var(--ott-font);
 			font-weight: 500;
 			cursor: pointer;

@@ -108,20 +108,20 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 		}
 		.section-toggle {
 			display: flex; align-items: center; gap: 6px;
-			width: 100%; padding: 9px 12px; border: none; background: none;
-			cursor: pointer; font-size: 13px; font-family: var(--ott-font);
+			width: 100%; padding: 10px 12px; border: none; background: none;
+			cursor: pointer; font-size: var(--ott-font-size-base); font-family: var(--ott-font);
 			font-weight: 600; color: var(--ott-text); text-align: left;
 			transition: background 0.12s;
 		}
 		.section-toggle:hover { background: var(--ott-bg-muted); }
 		.section-title { flex: 1; }
 		.section-badge {
-			font-size: 10px; font-weight: 600; padding: 2px 7px;
+			font-size: var(--ott-font-size-xs); font-weight: 600; padding: 2px 7px;
 			border-radius: var(--ott-radius-full);
 			background: var(--ott-primary-light); color: var(--ott-primary);
 		}
 		.section-count {
-			font-size: 11px; font-weight: 600;
+			font-size: var(--ott-font-size-xs); font-weight: 600;
 			min-width: 20px; height: 20px;
 			display: inline-flex; align-items: center; justify-content: center;
 			background: var(--ott-bg-subtle); border-radius: var(--ott-radius-full);
@@ -139,8 +139,8 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 			overflow: hidden;
 		}
 		.picker-tab {
-			flex: 1; padding: 6px 10px; border: none; background: var(--ott-bg-muted);
-			cursor: pointer; font-size: 12px; font-family: var(--ott-font);
+			flex: 1; padding: 7px 10px; border: none; background: var(--ott-bg-muted);
+			cursor: pointer; font-size: var(--ott-font-size-base); font-family: var(--ott-font);
 			font-weight: 500; color: var(--ott-text-muted);
 			transition: all 0.12s;
 		}
@@ -157,10 +157,10 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 		.project-item.selected { background: var(--ott-bg-selected); }
 		.project-item input[type="radio"] { margin-top: 3px; }
 		.project-info { display: flex; flex-direction: column; gap: 1px; }
-		.project-name { font-size: 13px; font-weight: 500; color: var(--ott-text); }
-		.project-meta { font-size: 11px; color: var(--ott-text-muted); }
-		.new-hint { font-size: 12px; color: var(--ott-text-muted); padding: 8px 0; }
-		.empty-msg { font-size: 12px; color: var(--ott-text-muted); padding: 12px 0; text-align: center; }
+		.project-name { font-size: var(--ott-font-size-base); font-weight: 500; color: var(--ott-text); }
+		.project-meta { font-size: var(--ott-font-size-xs); color: var(--ott-text-muted); }
+		.new-hint { font-size: var(--ott-font-size-sm); color: var(--ott-text-muted); padding: 8px 0; }
+		.empty-msg { font-size: var(--ott-font-size-sm); color: var(--ott-text-muted); padding: 12px 0; text-align: center; }
 
 		.send-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
 
@@ -169,20 +169,20 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 		.coll-row {
 			display: grid; grid-template-columns: 1fr auto 50px 40px;
 			gap: 8px; align-items: center;
-			padding: 5px 0; font-size: 12px;
+			padding: 6px 0; font-size: var(--ott-font-size-base);
 			border-bottom: 1px solid var(--ott-border-light);
 		}
 		.coll-row:last-child { border-bottom: none; }
 		.coll-name {
-			font-family: var(--ott-font-mono); font-size: 11px;
+			font-family: var(--ott-font-mono); font-size: var(--ott-font-size-sm);
 			color: var(--ott-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 		}
-		.coll-status { font-size: 10px; font-weight: 600; white-space: nowrap; }
-		.coll-meta { font-size: 10px; color: var(--ott-text-muted); text-align: right; }
+		.coll-status { font-size: var(--ott-font-size-xs); font-weight: 600; white-space: nowrap; }
+		.coll-meta { font-size: var(--ott-font-size-xs); color: var(--ott-text-muted); text-align: right; }
 
 		.show-more {
 			border: none; background: none; cursor: pointer; padding: 6px 0;
-			font-size: 11px; font-family: var(--ott-font); color: var(--ott-primary);
+			font-size: var(--ott-font-size-sm); font-family: var(--ott-font); color: var(--ott-primary);
 			display: block; width: 100%; text-align: left;
 		}
 		.show-more:hover { text-decoration: underline; }
@@ -191,9 +191,9 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 		.quick-actions { display: flex; gap: 6px; margin-top: 4px; }
 		.action-btn {
 			display: inline-flex; align-items: center; gap: 4px;
-			padding: 6px 10px; border: 1px solid var(--ott-border-light);
+			padding: 7px 12px; border: 1px solid var(--ott-border-light);
 			border-radius: var(--ott-radius-md); background: var(--ott-bg);
-			cursor: pointer; font-size: 12px; font-family: var(--ott-font);
+			cursor: pointer; font-size: var(--ott-font-size-base); font-family: var(--ott-font);
 			font-weight: 500; color: var(--ott-text-secondary); transition: all 0.12s;
 		}
 		.action-btn:hover { background: var(--ott-bg-muted); color: var(--ott-text); border-color: var(--ott-border); }
@@ -201,9 +201,9 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 		/* Buttons */
 		.btn-primary {
 			display: inline-flex; align-items: center; gap: 5px;
-			padding: 6px 14px; border: none; border-radius: var(--ott-radius-md);
+			padding: 7px 14px; border: none; border-radius: var(--ott-radius-md);
 			background: var(--ott-primary); color: #fff; cursor: pointer;
-			font-size: 12px; font-family: var(--ott-font); font-weight: 500;
+			font-size: var(--ott-font-size-base); font-family: var(--ott-font); font-weight: 500;
 			transition: background 0.15s;
 		}
 		.btn-primary:hover { background: var(--ott-primary-hover); }

@@ -113,7 +113,7 @@ import { FolderChildItem } from '../../models/translation.model';
 		.toolbar-btn:hover { color: var(--ott-text-secondary); background: var(--ott-bg-muted); }
 		.toolbar-btn.active { color: var(--ott-primary); background: var(--ott-primary-light); }
 		.item-count {
-			font-size: 11px; color: var(--ott-text-muted); margin-left: 4px;
+			font-size: var(--ott-font-size-xs); color: var(--ott-text-muted); margin-left: 4px;
 		}
 		.search-box {
 			display: flex; align-items: center; gap: 5px;
@@ -126,25 +126,25 @@ import { FolderChildItem } from '../../models/translation.model';
 			box-shadow: 0 0 0 2px var(--ott-ring);
 		}
 		.search-box input {
-			border: none; outline: none; font-size: 12px;
+			border: none; outline: none; font-size: var(--ott-font-size-base);
 			font-family: var(--ott-font); color: var(--ott-text);
 			background: transparent; width: 140px;
 		}
 
 		/* Table */
 		.contents-table {
-			width: 100%; border-collapse: collapse; font-size: 13px;
+			width: 100%; border-collapse: collapse; font-size: var(--ott-font-size-base);
 		}
 		.contents-table th {
-			text-align: left; padding: 6px 10px;
-			font-size: 11px; font-weight: 500;
+			text-align: left; padding: 8px 10px;
+			font-size: var(--ott-font-size-sm); font-weight: 500;
 			color: var(--ott-text-muted);
 			border-bottom: 1px solid var(--ott-border-light);
 			cursor: pointer; user-select: none; white-space: nowrap;
 		}
 		.contents-table th ott-icon { vertical-align: middle; margin-left: 2px; }
 		.contents-table td {
-			padding: 7px 10px; color: var(--ott-text);
+			padding: 9px 10px; color: var(--ott-text);
 			border-bottom: 1px solid var(--ott-border-light);
 		}
 		.contents-table tbody tr {
@@ -161,14 +161,14 @@ import { FolderChildItem } from '../../models/translation.model';
 		.item-name {
 			overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 		}
-		.col-id { width: 60px; font-size: 11px; color: var(--ott-text-muted); font-family: var(--ott-font-mono); }
-		.col-type { width: 120px; font-size: 12px; color: var(--ott-text-muted); }
-		.col-size { width: 70px; font-size: 12px; color: var(--ott-text-muted); }
-		.col-modified { width: 90px; font-size: 12px; color: var(--ott-text-muted); }
+		.col-id { width: 60px; font-size: var(--ott-font-size-xs); color: var(--ott-text-muted); font-family: var(--ott-font-mono); }
+		.col-type { width: 120px; font-size: var(--ott-font-size-sm); color: var(--ott-text-muted); }
+		.col-size { width: 70px; font-size: var(--ott-font-size-sm); color: var(--ott-text-muted); }
+		.col-modified { width: 90px; font-size: var(--ott-font-size-sm); color: var(--ott-text-muted); }
 
 		/* Type badges */
 		.type-badge {
-			font-size: 10px; font-weight: 500; padding: 1px 6px;
+			font-size: var(--ott-font-size-xs); font-weight: 500; padding: 2px 7px;
 			border-radius: var(--ott-radius-sm);
 			background: var(--ott-bg-subtle); color: var(--ott-text-secondary);
 		}
@@ -179,20 +179,20 @@ import { FolderChildItem } from '../../models/translation.model';
 		/* Empty */
 		.empty-state {
 			display: flex; align-items: center; justify-content: center; gap: 6px;
-			padding: 28px 0; font-size: 13px; color: var(--ott-text-muted);
+			padding: 28px 0; font-size: var(--ott-font-size-base); color: var(--ott-text-muted);
 		}
 
 		/* Selection bar */
 		.selection-bar {
 			display: flex; align-items: center; gap: 8px;
-			padding: 6px 10px; margin-top: 6px;
+			padding: 8px 10px; margin-top: 6px;
 			background: var(--ott-primary-light);
 			border-radius: var(--ott-radius-sm);
-			font-size: 12px; color: var(--ott-primary); font-weight: 500;
+			font-size: var(--ott-font-size-sm); color: var(--ott-primary); font-weight: 500;
 		}
 		.clear-btn {
 			border: none; background: none; cursor: pointer;
-			font-size: 12px; font-family: var(--ott-font);
+			font-size: var(--ott-font-size-sm); font-family: var(--ott-font);
 			color: var(--ott-primary); text-decoration: underline; padding: 0;
 		}
 	`]

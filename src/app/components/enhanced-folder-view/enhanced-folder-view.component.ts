@@ -136,13 +136,13 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 		}
 		.efv-title {
 			margin: 0;
-			font-size: 18px;
+			font-size: var(--ott-font-size-xl);
 			font-weight: 700;
 			color: var(--ott-text);
 			letter-spacing: -0.01em;
 		}
 		.efv-id {
-			font-size: 11px;
+			font-size: var(--ott-font-size-xs);
 			color: var(--ott-text-muted);
 			font-family: var(--ott-font-mono);
 		}
@@ -167,11 +167,11 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			display: inline-flex;
 			align-items: center;
 			gap: 5px;
-			padding: 8px 14px;
+			padding: 10px 14px;
 			border: none;
 			background: none;
 			cursor: pointer;
-			font-size: 13px;
+			font-size: var(--ott-font-size-md);
 			font-family: var(--ott-font);
 			font-weight: 500;
 			color: var(--ott-text-muted);
@@ -186,17 +186,17 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			border-bottom-color: var(--ott-primary);
 		}
 		.tab-badge {
-			font-size: 10px;
+			font-size: var(--ott-font-size-xs);
 			font-weight: 600;
-			min-width: 18px;
-			height: 18px;
+			min-width: 20px;
+			height: 20px;
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
 			background: var(--ott-bg-subtle);
 			color: var(--ott-text-muted);
 			border-radius: var(--ott-radius-full);
-			padding: 0 4px;
+			padding: 0 5px;
 		}
 		.efv-tab.active .tab-badge {
 			background: var(--ott-primary-light);
@@ -214,7 +214,7 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			gap: 6px;
 			padding: 40px 0;
 			color: var(--ott-text-muted);
-			font-size: 13px;
+			font-size: var(--ott-font-size-base);
 		}
 		.placeholder-tab p { margin: 0; }
 		.inline-edit-tab { max-width: 400px; padding: 12px 0; }

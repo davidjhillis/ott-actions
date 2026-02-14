@@ -100,11 +100,15 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 		}
 
 		// In CMS mode: manage Enhanced Folder View lifecycle based on context.
-		// When context is a folder → inject (poll for CMS <folder-view> to exist first).
-		// When context is not a folder → destroy the enhanced view.
+		// Only inject for ASTM translation workflow schemas, not generic folders.
+		const ASTM_SCHEMAS = [
+			'DesignationCollection', 'StandardDatedVersion',
+			'TranslationBatch', 'TranslatedStandardCollection'
+		];
+
 		this.observableSubTeardowns.push(
 			this.assetContextService.context$.subscribe(ctx => {
-				if (ctx?.isFolder) {
+				if (ctx?.isFolder && ASTM_SCHEMAS.includes(ctx.schema || '')) {
 					this.waitForFolderViewThenInject();
 				} else {
 					this.mainComponentService.destroyEnhancedFolderView();

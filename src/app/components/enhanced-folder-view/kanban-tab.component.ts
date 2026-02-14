@@ -101,13 +101,13 @@ interface KanbanColumn {
 		}
 		.search-box:focus-within { border-color: var(--ott-primary); box-shadow: 0 0 0 2px var(--ott-ring); }
 		.search-box input {
-			border: none; outline: none; font-size: 12px;
+			border: none; outline: none; font-size: var(--ott-font-size-base);
 			font-family: var(--ott-font); color: var(--ott-text);
 			background: transparent; width: 110px;
 		}
 		.filter-select {
-			padding: 5px 8px; border: 1px solid var(--ott-border-light);
-			border-radius: var(--ott-radius-md); font-size: 12px;
+			padding: 6px 8px; border: 1px solid var(--ott-border-light);
+			border-radius: var(--ott-radius-md); font-size: var(--ott-font-size-base);
 			font-family: var(--ott-font); color: var(--ott-text-secondary);
 			background: var(--ott-bg); cursor: pointer;
 		}
@@ -136,13 +136,13 @@ interface KanbanColumn {
 		}
 		.col-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 		.col-label {
-			flex: 1; font-size: 11px; font-weight: 600;
+			flex: 1; font-size: var(--ott-font-size-sm); font-weight: 600;
 			text-transform: uppercase; letter-spacing: 0.3px;
 			color: var(--ott-text-secondary);
 		}
 		.col-num {
-			font-size: 10px; font-weight: 700; color: var(--ott-text-muted);
-			min-width: 18px; height: 18px;
+			font-size: var(--ott-font-size-xs); font-weight: 700; color: var(--ott-text-muted);
+			min-width: 20px; height: 20px;
 			display: inline-flex; align-items: center; justify-content: center;
 			background: var(--ott-bg); border-radius: var(--ott-radius-full);
 		}
@@ -171,15 +171,15 @@ interface KanbanColumn {
 			margin-bottom: 4px;
 		}
 		.card-schema {
-			font-size: 9px; font-weight: 600;
+			font-size: var(--ott-font-size-xs); font-weight: 600;
 			text-transform: uppercase; letter-spacing: 0.3px;
-			padding: 1px 5px; border-radius: var(--ott-radius-sm);
+			padding: 2px 5px; border-radius: var(--ott-radius-sm);
 			background: var(--ott-bg-subtle); color: var(--ott-text-muted);
 		}
 
 		.card-title {
-			font-size: 12px; font-weight: 500;
-			color: var(--ott-text); line-height: 1.35;
+			font-size: var(--ott-font-size-base); font-weight: 500;
+			color: var(--ott-text); line-height: var(--ott-line-height-tight);
 			word-break: break-word;
 		}
 
@@ -189,16 +189,16 @@ interface KanbanColumn {
 		}
 		.card-assignee {
 			display: flex; align-items: center; gap: 3px;
-			font-size: 11px; color: var(--ott-text-secondary);
+			font-size: var(--ott-font-size-sm); color: var(--ott-text-secondary);
 		}
 		.card-assignee.muted { color: var(--ott-text-muted); }
 		.card-date {
-			font-size: 10px; color: var(--ott-text-muted);
+			font-size: var(--ott-font-size-xs); color: var(--ott-text-muted);
 			font-family: var(--ott-font-mono);
 		}
 
 		.more {
-			text-align: center; padding: 6px; font-size: 11px;
+			text-align: center; padding: 6px; font-size: var(--ott-font-size-sm);
 			color: var(--ott-primary); cursor: pointer;
 			border-radius: var(--ott-radius-sm);
 		}
@@ -206,11 +206,11 @@ interface KanbanColumn {
 		.empty {
 			flex: 1; display: flex; flex-direction: column;
 			align-items: center; justify-content: center; gap: 4px;
-			font-size: 11px; color: var(--ott-text-muted); padding: 20px 0;
+			font-size: var(--ott-font-size-sm); color: var(--ott-text-muted); padding: 20px 0;
 		}
 
 		.hint {
-			margin-top: 8px; font-size: 11px; color: var(--ott-text-muted);
+			margin-top: 8px; font-size: var(--ott-font-size-sm); color: var(--ott-text-muted);
 			text-align: center;
 		}
 	`]

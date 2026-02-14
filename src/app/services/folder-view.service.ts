@@ -47,10 +47,18 @@ export class FolderViewService {
 
 	/**
 	 * Resolve folder view data from asset context.
-	 * Tries REST API first, falls back to postMessage bridge, then demo data.
+	 * Priority: NG_REF (direct CMS state) → REST API → postMessage → demo data.
 	 */
 	loadFolderView(ctx: AssetContext): void {
-		// Try REST API first
+		const ngRef = (window.top as any)?.NG_REF;
+
+		// Try NG_REF first (synchronous, reliable in CMS)
+		if (ngRef?.currentContent) {
+			this.loadFromNgRef(ctx, ngRef);
+			return;
+		}
+
+		// Fall back to REST API
 		this.cmsApi.checkAvailability().subscribe(available => {
 			if (available) {
 				this.loadFromRestApi(ctx);
@@ -61,6 +69,158 @@ export class FolderViewService {
 				this.viewDataSubject.next(this.getDemoData(ctx));
 			}
 		});
+	}
+
+	/**
+	 * Load folder data directly from CMS NG_REF state.
+	 * Reads Model._value for metadata and parses the native <mat-table> DOM for children.
+	 */
+	private loadFromNgRef(ctx: AssetContext, ngRef: any): void {
+		const model = ngRef.currentContent?.Model?._value;
+		if (!model) {
+			// Model not available yet, fall back to REST
+			this.cmsApi.checkAvailability().subscribe(available => {
+				if (available) this.loadFromRestApi(ctx);
+				else this.viewDataSubject.next(this.getDemoData(ctx));
+			});
+			return;
+		}
+
+		const schema = this.resolveSchema(model.SchemaName || ctx.schema);
+		const breadcrumbs = this.buildBreadcrumbsFromPath(ctx.path || '', ctx.id, model.Name || ctx.name);
+		const children = this.parseChildrenFromDom();
+		const metadata = this.extractMetadataFromModel(schema, model);
+
+		this.viewDataSubject.next({
+			schema,
+			tabs: this.getTabsForSchema(schema),
+			breadcrumbs,
+			children,
+			metadata,
+			translatedCollections: [],
+			tmProjects: [],
+			healthcheck: [],
+			pageFields: this.buildPageFieldsFromModel(model),
+			rawPageData: null
+		});
+
+		console.log(`[IGX-OTT] Loaded from NG_REF: ${model.Name}, schema=${schema}, children=${children.length}`);
+	}
+
+	/**
+	 * Parse folder children from the native CMS <mat-table> inside <folder-view>.
+	 * Each row contains: name, ID, type, size, modified date.
+	 */
+	private parseChildrenFromDom(): FolderChildItem[] {
+		const items: FolderChildItem[] = [];
+		try {
+			const topDoc = window.top?.document;
+			if (!topDoc) return items;
+
+			const folderView = topDoc.querySelector('folder-view');
+			if (!folderView) return items;
+
+			// Find mat-table rows
+			const rows = folderView.querySelectorAll('mat-row, tr.mat-mdc-row, [mat-row]');
+			rows.forEach((row, index) => {
+				const cells = row.querySelectorAll('mat-cell, td.mat-mdc-cell, [mat-cell]');
+				if (cells.length < 2) return;
+
+				// Extract text content from cells
+				const cellTexts = Array.from(cells).map(c => (c.textContent || '').trim());
+
+				// Typical CMS folder grid: [checkbox], [name], [id], [type], [size], [modified]
+				// The exact column layout may vary; we extract what we can
+				const nameCell = cells.length > 1 ? cellTexts[1] : cellTexts[0];
+				const idCell = cells.length > 2 ? cellTexts[2] : '';
+				const typeCell = cells.length > 3 ? cellTexts[3] : '';
+				const sizeCell = cells.length > 4 ? cellTexts[4] : '';
+				const modifiedCell = cells.length > 5 ? cellTexts[5] : '';
+
+				const isFolder = typeCell.toLowerCase().includes('folder') ||
+					row.querySelector('[class*="folder"]') !== null;
+
+				if (nameCell) {
+					items.push({
+						id: idCell || `dom-${index}`,
+						name: nameCell,
+						type: typeCell || (isFolder ? 'Folder' : 'File'),
+						isFolder,
+						size: sizeCell || undefined,
+						modified: modifiedCell || undefined
+					});
+				}
+			});
+		} catch (e) {
+			console.warn('[IGX-OTT] Failed to parse children from DOM:', e);
+		}
+		return items;
+	}
+
+	/**
+	 * Extract metadata from the CMS Model object based on schema type.
+	 */
+	private extractMetadataFromModel(
+		schema: FolderSchema,
+		model: any
+	): DesignationCollectionMetadata | StandardDatedVersionMetadata | TranslationBatchMetadata | null {
+		switch (schema) {
+			case 'DesignationCollection':
+				return {
+					baseDesignation: model.Name || '',
+					organization: model.Organization || '',
+					committee: model.Committee || '',
+					committeeCode: model.CommitteeCode || '',
+					homeEditor: model.AssignedUserName || model.HomeEditor || '',
+					homeEditorEmail: model.HomeEditorEmail || '',
+					reportNumber: model.ReportNumber,
+					translationMaintenance: []
+				};
+			case 'StandardDatedVersion':
+				return {
+					standardTitle: model.Name || '',
+					actionType: model.ActionType || '',
+					approvalDate: model.ApprovalDate,
+					publicationDate: model.PublicationDate,
+					designationCollectionId: model.ParentId,
+					designationCollectionName: model.ParentName
+				};
+			case 'TranslationBatch':
+				return {
+					batchId: model.Id || '',
+					type: model.BatchType || model.Type || '',
+					vendor: model.Vendor || '',
+					dueDate: model.DueDate,
+					assignedTo: model.AssignedUserName,
+					standardCount: parseInt(model.ChildrenCount || '0', 10),
+					daysElapsed: 0,
+					productionReadiness: model.ProductionReadiness || 'Not Ready',
+					status: model.Status || 'Open'
+				};
+			default:
+				return null;
+		}
+	}
+
+	/**
+	 * Build dynamic page fields from the CMS Model properties.
+	 */
+	private buildPageFieldsFromModel(model: any): CmsPageField[] {
+		const fields: CmsPageField[] = [];
+		const skipKeys = new Set(['Id', 'ParentId', '__typename', '_value', 'ChildrenCount']);
+
+		for (const [key, value] of Object.entries(model)) {
+			if (skipKeys.has(key) || value === null || value === undefined || value === '') continue;
+			if (typeof value === 'object' && !Array.isArray(value)) continue;
+
+			fields.push({
+				name: key,
+				value: value as any,
+				type: Array.isArray(value) ? 'list' : 'text',
+				label: key.replace(/([A-Z])/g, ' $1').trim()
+			});
+		}
+		return fields;
 	}
 
 	/**
