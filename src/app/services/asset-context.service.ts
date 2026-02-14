@@ -21,20 +21,20 @@ export class AssetContextService implements OnDestroy {
 
 	constructor(private cms: CMSCommunicationsService) {
 		if (this.cms.isDevMode) {
-			// Emit demo context for standalone dev preview
+			// Emit demo context: Designation Collection for ASTM translation workflow
 			this.contextSubject.next({
-				id: 'x312',
-				name: 'ISO-9001-2025 Draft',
+				id: 'af/7',
+				name: 'E0008_E0008M',
 				isFolder: true,
-				path: '/Standards/Quality/ISO-9001-2025',
-				schema: 'StandardsCollection',
-				workflowStatus: 'Review',
+				path: '/Standards Documents/E0008_E0008M',
+				schema: 'DesignationCollection',
+				workflowStatus: 'In Review',
 				selectedItems: [
-					{ id: 'x313', name: 'Draft-v3.2.docx', isFolder: false, schema: 'Document' },
-					{ id: 'x314', name: 'Appendix-A.pdf', isFolder: false, schema: 'Document' },
-					{ id: 'x315', name: 'Review-Comments', isFolder: true, schema: 'Folder' },
-					{ id: 'x316', name: 'Supporting-Data.xlsx', isFolder: false, schema: 'Spreadsheet' },
-					{ id: 'x317', name: 'Cover-Letter.docx', isFolder: false, schema: 'Document' },
+					{ id: 'af/12', name: 'E0008_E0008M-16AE01: Standard Test Methods...', isFolder: true, schema: 'StandardCollection' },
+					{ id: 'af/13', name: 'E0008_E0008M-21: Standard Test Methods...', isFolder: true, schema: 'StandardCollection' },
+					{ id: 'af/14', name: 'E0008_E0008M-22: Standard Test Methods...', isFolder: true, schema: 'StandardCollection' },
+					{ id: 'af/15', name: 'E0008_E0008M-24: Standard Test Methods...', isFolder: true, schema: 'StandardCollection' },
+					{ id: 'af/16', name: 'E0008_E0008M-25: Standard Test Methods...', isFolder: true, schema: 'StandardCollection' },
 				]
 			});
 		} else {

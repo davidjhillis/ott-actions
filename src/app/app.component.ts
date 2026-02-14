@@ -5,10 +5,13 @@ import { MainComponentService } from './services/main-component.service';
 import { DynamicComponentService } from './services/dynamic-component.service';
 import { ActionExecutorService } from './services/action-executor.service';
 import { ActionConfigService } from './services/action-config.service';
+import { AssetContextService } from './services/asset-context.service';
 import { ThemeService } from './services/theme.service';
 import { ActionBarComponent } from './components/action-bar/action-bar.component';
 import { ActionManagerComponent } from './components/action-admin/action-manager.component';
+import { EnhancedFolderViewComponent } from './components/enhanced-folder-view/enhanced-folder-view.component';
 import { ActionDefinition } from './models/action.model';
+import { AssetContext } from './models/asset-context.model';
 
 /**
  * Main application component
@@ -23,7 +26,7 @@ import { ActionDefinition } from './models/action.model';
 @Component({
 	selector: '[igx-ott-root]',
 	standalone: true,
-	imports: [CommonModule, ActionBarComponent, ActionManagerComponent],
+	imports: [CommonModule, ActionBarComponent, ActionManagerComponent, EnhancedFolderViewComponent],
 	templateUrl: './app.component.html',
 	styleUrl: './app.component.less'
 })
@@ -33,12 +36,15 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 	showActionManager = false;
 	/** Dev mode: which left panel is active */
 	activePanel: 'tree' | 'actions' = 'actions';
+	/** Dev mode: current asset context for Enhanced Folder View */
+	devContext: AssetContext | null = null;
 
 	constructor(
 		private mainComponentService: MainComponentService,
 		private dynamicComponentService: DynamicComponentService,
 		private actionExecutorService: ActionExecutorService,
 		public actionConfigService: ActionConfigService,
+		private assetContextService: AssetContextService,
 		private themeService: ThemeService
 	) {
 		super();
@@ -54,6 +60,13 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 			// No CMS context - enable dev mode for standalone preview
 			this.devMode = true;
 			console.log('[IGX-OTT] Dev mode: rendering components standalone');
+
+			// Subscribe to asset context for dev mode Enhanced Folder View
+			this.observableSubTeardowns.push(
+				this.assetContextService.context$.subscribe(ctx => {
+					this.devContext = ctx;
+				})
+			);
 			return;
 		}
 
@@ -84,6 +97,15 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 				})
 			);
 		}
+
+		// In CMS mode: inject Enhanced Folder View when context changes to a folder
+		this.observableSubTeardowns.push(
+			this.assetContextService.context$.subscribe(ctx => {
+				if (ctx?.isFolder) {
+					setTimeout(() => this.mainComponentService.injectEnhancedFolderView(), 200);
+				}
+			})
+		);
 	}
 
 	ngAfterViewInit(): void {

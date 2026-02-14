@@ -7,6 +7,7 @@ import { UtilButtonComponent } from "../components/util-button/util-button.compo
 import { MicroFrontendPanelComponent } from "../components/micro-frontend-panel/micro-frontend-panel.component";
 import { MicroFrontendUtilPaneComponent } from "../components/micro-frontend-util-pane/micro-frontend-util-pane.component";
 import { ActionBarComponent } from "../components/action-bar/action-bar.component";
+import { EnhancedFolderViewComponent } from "../components/enhanced-folder-view/enhanced-folder-view.component";
 import { ActionDefinition } from "../models/action.model";
 import { ActionConfigService } from "./action-config.service";
 import { ComponentBase } from "../ComponentBase";
@@ -21,6 +22,7 @@ export class MainComponentService extends ComponentBase {
 	private microFrontendPanelRef?: ComponentRef<MicroFrontendPanelComponent>;
 	private microFrontendUtilPaneRef?: ComponentRef<MicroFrontendUtilPaneComponent>;
 	private actionPanelRef?: ComponentRef<ActionBarComponent>;
+	private folderViewRef?: ComponentRef<EnhancedFolderViewComponent>;
 
 	// Panel toggle event
 	public onPanelToggle: EventEmitter<any> = new EventEmitter<any>();
@@ -235,6 +237,71 @@ export class MainComponentService extends ComponentBase {
 	}
 
 	/**
+	 * Injects the Enhanced Folder View into the CMS main content area.
+	 * Called when a folder is selected and it's a folder context.
+	 * Replaces the native folder contents view.
+	 */
+	public injectEnhancedFolderView(): void {
+		const ctx = this.assetContextService.getCurrentContext();
+		if (!ctx?.isFolder) return;
+
+		// Destroy existing folder view if present
+		this.destroyFolderView();
+
+		const topWindow = window.top as any;
+		if (!topWindow) return;
+
+		// Find the native folder view container in the CMS
+		// The folder view lives in the main content area: #globalTabContainer or .tab-content
+		const container = topWindow.document.querySelector('#globalTabContainer .tab-content') ||
+			topWindow.document.querySelector('#globalTabContainer') ||
+			topWindow.document.querySelector('.main-content');
+
+		if (!container) {
+			console.warn('[IGX-OTT] Could not find CMS content area for folder view injection');
+			return;
+		}
+
+		// Create host element
+		const host = topWindow.document.createElement('div');
+		host.id = 'igx-ott-folder-view';
+		host.style.cssText = 'position:relative;z-index:1;';
+
+		// Hide native folder contents
+		const nativeFolder = container.querySelector('.folder-contents, .asset-folder-view, folder-view');
+		if (nativeFolder) {
+			(nativeFolder as HTMLElement).style.display = 'none';
+		}
+
+		container.appendChild(host);
+
+		// Create the Enhanced Folder View component
+		this.folderViewRef = this.dynamicComponentService.createComponent(EnhancedFolderViewComponent, host);
+		this.folderViewRef.instance.context = ctx;
+
+		console.log(`[IGX-OTT] Enhanced Folder View injected for: ${ctx.name} (${ctx.id})`);
+	}
+
+	/**
+	 * Destroys the Enhanced Folder View if present
+	 */
+	private destroyFolderView(): void {
+		if (this.folderViewRef) {
+			const host = this.folderViewRef.location.nativeElement;
+			this.dynamicComponentService.destroyComponent(this.folderViewRef.instance);
+			host?.remove();
+			this.folderViewRef = undefined;
+		}
+	}
+
+	/**
+	 * Gets the folder view component if it exists
+	 */
+	public getFolderView(): ComponentRef<EnhancedFolderViewComponent> | undefined {
+		return this.folderViewRef;
+	}
+
+	/**
 	 * Hides the main component when navigation occurs
 	 * Also destroys the component from panelRef after a short delay
 	 */
@@ -248,6 +315,9 @@ export class MainComponentService extends ComponentBase {
 		if (this.utilButtonRef?.instance) {
 			this.utilButtonRef.instance.uncurrent();
 		}
+
+		// Destroy folder view
+		this.destroyFolderView();
 
 		// Delay destruction to let UI hide first
 		setTimeout(() => {
@@ -291,6 +361,8 @@ export class MainComponentService extends ComponentBase {
 		if (this.actionPanelRef) {
 			this.dynamicComponentService.destroyComponent(this.actionPanelRef.instance);
 		}
+
+		this.destroyFolderView();
 
 		// Call parent cleanup
 		this.cleanup();

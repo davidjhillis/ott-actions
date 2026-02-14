@@ -13,6 +13,8 @@ import { CreateCollectionComponent } from '../components/action-modals/create-co
 import { ManageWorkflowComponent } from '../components/action-modals/manage-workflow/manage-workflow.component';
 import { BatchAssignComponent } from '../components/action-modals/batch-assign/batch-assign.component';
 import { ViewHistoryComponent } from '../components/action-modals/view-history/view-history.component';
+import { UploadSourceFilesComponent } from '../components/action-modals/upload-source-files/upload-source-files.component';
+import { ImportStandardsExcelComponent } from '../components/action-modals/import-standards-excel/import-standards-excel.component';
 import { ActionManagerComponent } from '../components/action-admin/action-manager.component';
 
 @Injectable({
@@ -252,6 +254,10 @@ export class ActionExecutorService {
 				return ManageWorkflowComponent;
 			case 'batch-assign':
 				return BatchAssignComponent;
+			case 'upload-source-files':
+				return UploadSourceFilesComponent;
+			case 'import-standards-excel':
+				return ImportStandardsExcelComponent;
 			default:
 				return null;
 		}

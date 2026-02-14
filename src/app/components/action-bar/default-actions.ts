@@ -70,11 +70,33 @@ export const DEFAULT_ACTIONS: ActionDefinition[] = [
 		id: 'send-to-translation',
 		label: 'Send to Translation',
 		icon: 'languages',
-		description: 'Send items for translation via Worldview',
+		description: 'Send items for translation via Translation Manager',
 		handler: { type: 'modal', componentId: 'send-to-translation' },
 		visibility: { folderOnly: true },
 		enabled: true,
 		order: 4,
+		groupId: 'distribution'
+	},
+	{
+		id: 'upload-source-files',
+		label: 'Upload Source Files',
+		icon: 'upload',
+		description: 'Upload English source files for translation',
+		handler: { type: 'modal', componentId: 'upload-source-files' },
+		visibility: { folderOnly: true },
+		enabled: true,
+		order: 5,
+		groupId: 'distribution'
+	},
+	{
+		id: 'import-standards-excel',
+		label: 'Import from Excel',
+		icon: 'file-input',
+		description: 'Bulk-create Translated Standard Collections from Excel',
+		handler: { type: 'modal', componentId: 'import-standards-excel' },
+		visibility: { folderOnly: true },
+		enabled: true,
+		order: 6,
 		groupId: 'distribution'
 	},
 
