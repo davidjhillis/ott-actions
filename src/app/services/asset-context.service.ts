@@ -187,35 +187,54 @@ export class AssetContextService implements OnDestroy {
 
 	/**
 	 * Resolve a DAM asset folder.
-	 * Reads schema directly from CMS NG_REF state (synchronous, reliable)
-	 * instead of making a potentially failing API call.
+	 * Reads schema from CMS NG_REF state, with retry for timing.
+	 * currentContent.Model always reflects the currently viewed content,
+	 * so no ID match check is needed.
 	 */
 	private resolveAssetFolder(urlId: string): void {
 		if (urlId === this.currentXid) return;
 		this.currentXid = urlId;
 
-		// Convert URL format (af_7) to API format (af/7)
 		const apiId = urlId.replace('_', '/');
+		this.tryResolveAssetFolder(apiId, urlId, 0);
+	}
 
-		// Read folder model directly from CMS state
+	/**
+	 * Attempt to read folder metadata from NG_REF.currentContent.Model.
+	 * Retries up to 1.5s (10 x 150ms) to handle CMS render timing.
+	 */
+	private tryResolveAssetFolder(apiId: string, urlId: string, attempt: number): void {
 		const model = (window.top as any)?.NG_REF?.currentContent?.Model?._value;
+		const schema = model?.SchemaName;
 
-		// Verify model matches current folder
-		const modelMatchesCurrent = model?.Id === apiId;
-		const name = modelMatchesCurrent ? (model.Name || urlId) : urlId;
-		const schema = modelMatchesCurrent ? (model.SchemaName || 'Folder') : 'Folder';
-		const parentId = modelMatchesCurrent ? model.ParentId : undefined;
-
-		const ctx: AssetContext = {
-			id: apiId,
-			name,
-			isFolder: true,
-			path: '',
-			schema,
-			parentId,
-		};
-		this.contextSubject.next(ctx);
-		console.log(`[IGX-OTT] Asset folder context: ${ctx.name} (${apiId}), schema: ${schema}`);
+		if (schema) {
+			// Model populated — use it
+			const ctx: AssetContext = {
+				id: apiId,
+				name: model.Name || urlId,
+				isFolder: true,
+				path: '',
+				schema,
+				parentId: model.ParentId || undefined,
+			};
+			this.contextSubject.next(ctx);
+			console.log(`[IGX-OTT] Asset folder context: ${ctx.name} (${apiId}), schema: ${schema}`);
+		} else if (attempt < 10) {
+			// Model not ready yet — retry after short delay
+			setTimeout(() => this.tryResolveAssetFolder(apiId, urlId, attempt + 1), 150);
+		} else {
+			// Gave up waiting — emit with unknown schema, let gating decide
+			console.warn(`[IGX-OTT] Model.SchemaName not available after retries for ${apiId}`);
+			const name = model?.Name || urlId;
+			this.contextSubject.next({
+				id: apiId,
+				name,
+				isFolder: true,
+				path: '',
+				schema: 'Folder',
+				parentId: model?.ParentId || undefined,
+			});
+		}
 	}
 
 	ngOnDestroy(): void {
