@@ -284,6 +284,14 @@ export class MainComponentService extends ComponentBase {
 	}
 
 	/**
+	 * Public method to destroy the Enhanced Folder View.
+	 * Called by the context subscription when navigating away from a folder.
+	 */
+	public destroyEnhancedFolderView(): void {
+		this.destroyFolderView();
+	}
+
+	/**
 	 * Destroys the Enhanced Folder View if present
 	 */
 	private destroyFolderView(): void {
@@ -310,10 +318,10 @@ export class MainComponentService extends ComponentBase {
 	}
 
 	/**
-	 * Hides the main component when navigation occurs
-	 * Also destroys the component from panelRef after a short delay
+	 * Hides non-folder UI components on navigation.
+	 * The folder view lifecycle is managed separately by the context subscription.
 	 */
-	public hideMainComponent(): void {
+	public hideNonFolderComponents(): void {
 		// Hide the topbar button's panel if it exists
 		if (this.topbarButtonRef?.instance) {
 			this.topbarButtonRef.instance.uncurrent();
@@ -323,9 +331,6 @@ export class MainComponentService extends ComponentBase {
 		if (this.utilButtonRef?.instance) {
 			this.utilButtonRef.instance.uncurrent();
 		}
-
-		// Destroy folder view
-		this.destroyFolderView();
 
 		// Delay destruction to let UI hide first
 		setTimeout(() => {

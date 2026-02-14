@@ -74,10 +74,13 @@ export class AssetContextService implements OnDestroy {
 	 * Supports: site/{xID}, assets/{a_ID}, assets/{assetfolders_ID}
 	 */
 	private resolveFromUrl(url: string): void {
-		// Try site page pattern: site/x123
-		const siteMatch = url.match(/site\/(x\d+)/i);
-		if (siteMatch) {
-			this.resolveSitePage(siteMatch[1]);
+		console.log(`[IGX-OTT] resolveFromUrl: ${url}`);
+
+		// Try DAM folder pattern FIRST: assets/af_123 or assets/assetfolders_123
+		// Must check before asset pattern since 'af_' starts with 'a'
+		const folderMatch = url.match(/assets\/(af_\d+|assetfolders_\d+)/i);
+		if (folderMatch) {
+			this.resolveAssetFolder(folderMatch[1]);
 			return;
 		}
 
@@ -88,16 +91,21 @@ export class AssetContextService implements OnDestroy {
 			return;
 		}
 
-		// Try DAM folder pattern: assets/af_123 or assets/assetfolders_123
-		const folderMatch = url.match(/assets\/(af_\d+|assetfolders_\d+)/i);
-		if (folderMatch) {
-			this.resolveAssetFolder(folderMatch[1]);
+		// Try site page pattern: site/x123
+		const siteMatch = url.match(/site\/(x\d+)/i);
+		if (siteMatch) {
+			this.resolveSitePage(siteMatch[1]);
 			return;
 		}
 
-		// No match — clear context
-		this.contextSubject.next(null);
-		this.currentXid = undefined;
+		// No match — only clear context if we're not already on a folder.
+		// The CMS sometimes fires extra NavigationEnd events with unrelated URLs;
+		// don't let them clobber a valid folder context.
+		const current = this.contextSubject.value;
+		if (!current?.isFolder) {
+			this.contextSubject.next(null);
+			this.currentXid = undefined;
+		}
 	}
 
 	/**

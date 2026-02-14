@@ -87,24 +87,27 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 			})
 		);
 
-		// Add router navigation event listener
+		// Add router navigation event listener — hide sidebar UI on navigation,
+		// but do NOT destroy the folder view here (managed by context subscription below).
 		if (ngref.router) {
 			this.observableSubTeardowns.push(
 				ngref.router.events.subscribe((event: any) => {
 					if (event.constructor.name === 'NavigationEnd') {
-						this.mainComponentService.hideMainComponent();
+						this.mainComponentService.hideNonFolderComponents();
 					}
 				})
 			);
 		}
 
-		// In CMS mode: inject Enhanced Folder View when context changes to a folder.
-		// Poll for <folder-view> to exist in the CMS DOM before injecting,
-		// since the CMS renders it asynchronously after navigation.
+		// In CMS mode: manage Enhanced Folder View lifecycle based on context.
+		// When context is a folder → inject (poll for CMS <folder-view> to exist first).
+		// When context is not a folder → destroy the enhanced view.
 		this.observableSubTeardowns.push(
 			this.assetContextService.context$.subscribe(ctx => {
 				if (ctx?.isFolder) {
 					this.waitForFolderViewThenInject();
+				} else {
+					this.mainComponentService.destroyEnhancedFolderView();
 				}
 			})
 		);
