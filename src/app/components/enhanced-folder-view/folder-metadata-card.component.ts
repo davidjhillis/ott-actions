@@ -1,7 +1,10 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideIconComponent } from '../shared/lucide-icon.component';
-import { FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetadata, TranslationBatchMetadata } from '../../models/translation.model';
+import {
+	FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetadata,
+	TranslationBatchMetadata, CmsPageField
+} from '../../models/translation.model';
 
 @Component({
 	selector: 'ott-folder-metadata-card',
@@ -47,6 +50,12 @@ import { FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetada
 						<span class="summary-sep">&middot;</span>
 						<span class="summary-text">{{ datedVersionMeta.actionType }}</span>
 					</ng-container>
+
+					<!-- Dynamic fields summary (when no typed metadata) -->
+					<ng-container *ngIf="!designationMeta && !batchMeta && !datedVersionMeta && pageFields.length > 0">
+						<span class="summary-sep">&middot;</span>
+						<span class="summary-text">{{ pageFields.length }} fields</span>
+					</ng-container>
 				</div>
 
 				<button class="expand-btn" [class.rotated]="expanded">
@@ -56,6 +65,9 @@ import { FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetada
 
 			<!-- Expanded detail panel -->
 			<div class="card-details" *ngIf="expanded">
+
+				<!-- TYPED METADATA (for known schemas) -->
+
 				<!-- Designation Collection -->
 				<ng-container *ngIf="designationMeta">
 					<div class="detail-grid">
@@ -178,8 +190,71 @@ import { FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetada
 					</div>
 				</ng-container>
 
-				<!-- Default -->
-				<ng-container *ngIf="schema === 'default' || schema === 'StandardCollection'">
+				<!-- DYNAMIC METADATA (from pageFields — for any schema) -->
+				<ng-container *ngIf="!designationMeta && !batchMeta && !datedVersionMeta && pageFields.length > 0">
+					<div class="detail-grid">
+						<ng-container *ngFor="let field of nonTableFields">
+							<div class="detail-item" [class.span-2]="isWideField(field)">
+								<span class="detail-label">{{ field.label }}</span>
+
+								<!-- Text / date -->
+								<span class="detail-value" *ngIf="field.type === 'text' || field.type === 'date'">
+									{{ field.value }}
+								</span>
+
+								<!-- Link -->
+								<span class="detail-value link" *ngIf="field.type === 'link'"
+									(click)="$event.stopPropagation()">
+									{{ field.value?.Name || field.value?.href || field.value }}
+								</span>
+
+								<!-- List (chips) -->
+								<span class="detail-value" *ngIf="field.type === 'list'">
+									<span class="chip" *ngFor="let item of field.value">{{ item }}</span>
+								</span>
+
+								<!-- Dropdown -->
+								<span class="detail-value" *ngIf="field.type === 'dropdown'">
+									{{ field.value }}
+								</span>
+
+								<!-- Rich text (show stripped) -->
+								<span class="detail-value" *ngIf="field.type === 'rich-text'"
+									[title]="field.value">
+									{{ stripHtml(field.value) | slice:0:120 }}
+								</span>
+							</div>
+						</ng-container>
+					</div>
+
+					<!-- Tables -->
+					<ng-container *ngFor="let field of tableFields">
+						<div class="tm-section">
+							<button class="tm-toggle" (click)="$event.stopPropagation(); toggleTable(field.name)">
+								<ott-icon [name]="expandedTables[field.name] ? 'chevron-down' : 'chevron-right'" [size]="12"></ott-icon>
+								{{ field.label }}
+								<span class="tm-count" *ngIf="field.value?.length">{{ field.value.length }}</span>
+							</button>
+							<table class="tm-table" *ngIf="expandedTables[field.name]">
+								<thead>
+									<tr>
+										<th *ngFor="let col of getTableColumns(field.value)">{{ col }}</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr *ngFor="let row of field.value">
+										<td *ngFor="let col of getTableColumns(field.value)">
+											{{ getRowValue(row, col) }}
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</ng-container>
+				</ng-container>
+
+				<!-- Fallback for default/StandardCollection schemas with no dynamic fields -->
+				<ng-container *ngIf="(schema === 'default' || schema === 'StandardCollection') && pageFields.length === 0">
 					<div class="detail-grid">
 						<div class="detail-item">
 							<span class="detail-label">Name</span>
@@ -206,33 +281,21 @@ import { FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetada
 		}
 		.metadata-card:hover { border-color: var(--ott-border); }
 
-		/* Summary row — always visible */
+		/* Summary row */
 		.card-summary {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			padding: 10px 14px;
-			cursor: pointer;
-			user-select: none;
+			display: flex; align-items: center; justify-content: space-between;
+			padding: 10px 14px; cursor: pointer; user-select: none;
 			transition: background 0.12s;
 		}
 		.card-summary:hover { background: var(--ott-bg-muted); }
 		.summary-left {
-			display: flex;
-			align-items: center;
-			gap: 6px;
-			min-width: 0;
-			flex-wrap: wrap;
+			display: flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap;
 		}
 		.schema-badge {
-			font-size: 10px;
-			font-weight: 600;
-			text-transform: uppercase;
-			letter-spacing: 0.5px;
-			padding: 2px 7px;
+			font-size: 10px; font-weight: 600; text-transform: uppercase;
+			letter-spacing: 0.5px; padding: 2px 7px;
 			border-radius: var(--ott-radius-sm);
-			background: var(--ott-primary-light);
-			color: var(--ott-primary);
+			background: var(--ott-primary-light); color: var(--ott-primary);
 			white-space: nowrap;
 		}
 		.summary-sep { color: var(--ott-border); font-size: 10px; }
@@ -240,21 +303,13 @@ import { FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetada
 		.summary-text.muted { color: var(--ott-text-muted); }
 		.lang-pills { display: flex; gap: 3px; }
 		.lang-pill {
-			font-size: 10px;
-			font-weight: 600;
-			font-family: var(--ott-font-mono);
-			padding: 1px 5px;
-			border-radius: var(--ott-radius-sm);
-			background: var(--ott-bg-subtle);
-			color: var(--ott-text-secondary);
+			font-size: 10px; font-weight: 600; font-family: var(--ott-font-mono);
+			padding: 1px 5px; border-radius: var(--ott-radius-sm);
+			background: var(--ott-bg-subtle); color: var(--ott-text-secondary);
 		}
 		.expand-btn {
-			border: none;
-			background: none;
-			cursor: pointer;
-			color: var(--ott-text-muted);
-			padding: 2px;
-			display: flex;
+			border: none; background: none; cursor: pointer;
+			color: var(--ott-text-muted); padding: 2px; display: flex;
 			transition: transform 0.2s, color 0.15s;
 		}
 		.expand-btn:hover { color: var(--ott-text); }
@@ -266,26 +321,18 @@ import { FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetada
 			border-top: 1px solid var(--ott-border-light);
 		}
 		.detail-grid {
-			display: grid;
-			grid-template-columns: 1fr 1fr;
-			gap: 10px 24px;
-			padding-top: 12px;
+			display: grid; grid-template-columns: 1fr 1fr;
+			gap: 10px 24px; padding-top: 12px;
 		}
 		.detail-item { display: flex; flex-direction: column; gap: 1px; }
 		.detail-item.span-2 { grid-column: span 2; }
 		.detail-label {
-			font-size: 10px;
-			font-weight: 600;
-			text-transform: uppercase;
-			letter-spacing: 0.4px;
-			color: var(--ott-text-muted);
+			font-size: 10px; font-weight: 600; text-transform: uppercase;
+			letter-spacing: 0.4px; color: var(--ott-text-muted);
 		}
 		.detail-value {
-			font-size: 13px;
-			color: var(--ott-text);
-			display: flex;
-			align-items: center;
-			gap: 5px;
+			font-size: 13px; color: var(--ott-text);
+			display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
 		}
 		.detail-value.mono, .mono { font-family: var(--ott-font-mono); }
 		.detail-value.link { color: var(--ott-primary); cursor: pointer; }
@@ -293,13 +340,19 @@ import { FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetada
 		.edit-inline-btn {
 			border: none; background: none; cursor: pointer;
 			color: var(--ott-text-muted); padding: 1px;
-			border-radius: var(--ott-radius-sm);
-			display: inline-flex;
+			border-radius: var(--ott-radius-sm); display: inline-flex;
 			transition: color 0.15s;
 		}
 		.edit-inline-btn:hover { color: var(--ott-primary); }
 
-		/* Translation Maintenance — nested disclosure */
+		/* Chips for list fields */
+		.chip {
+			font-size: 10px; font-weight: 500; padding: 2px 7px;
+			border-radius: var(--ott-radius-full);
+			background: var(--ott-bg-subtle); color: var(--ott-text-secondary);
+		}
+
+		/* Translation Maintenance / tables */
 		.tm-section { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--ott-border-light); }
 		.tm-toggle {
 			display: flex; align-items: center; gap: 5px;
@@ -355,11 +408,13 @@ export class FolderMetadataCardComponent {
 	@Input() metadata: any = null;
 	@Input() folderName = '';
 	@Input() folderId = '';
+	@Input() pageFields: CmsPageField[] = [];
 	@Output() editReportNumber = new EventEmitter<void>();
 	@Output() navigateToCollection = new EventEmitter<string>();
 
 	expanded = false;
 	tmExpanded = false;
+	expandedTables: Record<string, boolean> = {};
 
 	get schemaLabel(): string {
 		switch (this.schema) {
@@ -381,5 +436,42 @@ export class FolderMetadataCardComponent {
 
 	get batchMeta(): TranslationBatchMetadata | null {
 		return this.schema === 'TranslationBatch' ? this.metadata : null;
+	}
+
+	/** Non-table fields for the dynamic grid */
+	get nonTableFields(): CmsPageField[] {
+		return this.pageFields.filter(f => f.type !== 'table');
+	}
+
+	/** Table fields rendered as collapsible sections */
+	get tableFields(): CmsPageField[] {
+		return this.pageFields.filter(f => f.type === 'table');
+	}
+
+	isWideField(field: CmsPageField): boolean {
+		return field.type === 'rich-text' ||
+			(typeof field.value === 'string' && field.value.length > 60);
+	}
+
+	toggleTable(name: string): void {
+		this.expandedTables[name] = !this.expandedTables[name];
+	}
+
+	getTableColumns(rows: any[]): string[] {
+		if (!rows || rows.length === 0) return [];
+		const first = rows[0];
+		return Object.keys(first).filter(k => !k.startsWith('_'));
+	}
+
+	getRowValue(row: any, col: string): string {
+		const val = row[col];
+		if (val === null || val === undefined) return '';
+		if (Array.isArray(val)) return val.join(', ');
+		return String(val);
+	}
+
+	stripHtml(html: string): string {
+		if (!html) return '';
+		return html.replace(/<[^>]*>/g, '').trim();
 	}
 }

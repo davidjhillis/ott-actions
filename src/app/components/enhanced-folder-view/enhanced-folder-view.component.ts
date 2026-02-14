@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ComponentBase } from '../../ComponentBase';
 import { AssetContext } from '../../models/asset-context.model';
 import { FolderViewService, FolderViewData, BreadcrumbSegment } from '../../services/folder-view.service';
+import { ActionExecutorService } from '../../services/action-executor.service';
 import { FolderSchema, FolderTab, FolderChildItem } from '../../models/translation.model';
 import { NotificationService } from '../../services/notification.service';
 import { FolderBreadcrumbComponent } from './folder-breadcrumb.component';
@@ -48,6 +49,7 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 				[metadata]="viewData.metadata"
 				[folderName]="context?.name || ''"
 				[folderId]="context?.id || ''"
+				[pageFields]="viewData.pageFields"
 				(editReportNumber)="showReportNumberEdit = true"
 				(navigateToCollection)="onNavigateToCollection($event)">
 			</ott-folder-metadata-card>
@@ -85,7 +87,10 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 					*ngIf="activeTab === 'translation'"
 					[translatedCollections]="viewData.translatedCollections"
 					[tmProjects]="viewData.tmProjects"
-					[selectedItems]="selectedItems">
+					[selectedItems]="selectedItems"
+					(addToProject)="onAddToProject($event)"
+					(uploadSourceFiles)="onUploadSourceFiles()"
+					(addCollection)="onAddCollection()">
 				</ott-translation-tab>
 
 				<ott-kanban-tab
@@ -225,6 +230,7 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 
 	constructor(
 		private folderViewService: FolderViewService,
+		private actionExecutor: ActionExecutorService,
 		private notify: NotificationService
 	) {
 		super();
@@ -261,14 +267,48 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 
 	onBreadcrumbNav(segment: BreadcrumbSegment): void {
 		console.log(`[IGX-OTT] Navigate to: ${segment.name} (${segment.id})`);
+		// Reload folder view with the breadcrumb segment as new context
+		if (this.context && segment.id !== this.context.id) {
+			const newContext: AssetContext = {
+				id: segment.id,
+				name: segment.name,
+				isFolder: true,
+				path: segment.path,
+				schema: this.context.schema
+			};
+			this.context = newContext;
+			this.folderViewService.loadFolderView(newContext);
+		}
 	}
 
 	onNavigateToCollection(id: string | undefined): void {
-		if (id) console.log(`[IGX-OTT] Navigate to collection: ${id}`);
+		if (id) {
+			console.log(`[IGX-OTT] Navigate to collection: ${id}`);
+			const newContext: AssetContext = {
+				id,
+				name: id,
+				isFolder: true,
+				path: ''
+			};
+			this.context = newContext;
+			this.folderViewService.loadFolderView(newContext);
+		}
 	}
 
 	onItemOpen(item: FolderChildItem): void {
 		console.log(`[IGX-OTT] Open item: ${item.name} (${item.id})`);
+		if (item.isFolder) {
+			// Navigate into sub-folder
+			const newContext: AssetContext = {
+				id: item.id,
+				name: item.name,
+				isFolder: true,
+				path: '',
+				schema: item.schema
+			};
+			this.context = newContext;
+			this.folderViewService.loadFolderView(newContext);
+		}
 	}
 
 	onSelectionChange(items: FolderChildItem[]): void {
@@ -288,6 +328,39 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 				this.notify.success(`Report number set to ${event.reportNumber}`);
 				this.showReportNumberEdit = false;
 			}
+		});
+	}
+
+	onAddToProject(event: { projectId: string | null; items: FolderChildItem[]; isNew: boolean }): void {
+		console.log(`[IGX-OTT] Add to project:`, event);
+		this.notify.success(`Added ${event.items.length} items to ${event.isNew ? 'new' : 'existing'} project`);
+	}
+
+	onUploadSourceFiles(): void {
+		console.log('[IGX-OTT] Upload source files');
+		// Trigger the upload modal via ActionExecutorService
+		this.actionExecutor.execute({
+			id: 'upload-source-files',
+			label: 'Upload Source Files',
+			icon: 'upload',
+			handler: { type: 'modal', componentId: 'upload-source-files' },
+			enabled: true,
+			groupId: 'translation',
+			order: 0
+		});
+	}
+
+	onAddCollection(): void {
+		console.log('[IGX-OTT] Add collection');
+		// Trigger the create collection modal via ActionExecutorService
+		this.actionExecutor.execute({
+			id: 'create-collection',
+			label: 'Create Collection',
+			icon: 'folder-plus',
+			handler: { type: 'modal', componentId: 'create-collection' },
+			enabled: true,
+			groupId: 'translation',
+			order: 0
 		});
 	}
 

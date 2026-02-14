@@ -1,5 +1,6 @@
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import { provideAnimations } from '@angular/platform-browser/animations';
+import { provideHttpClient } from '@angular/common/http';
 import { MainComponentService } from './services/main-component.service';
 import { DynamicComponentService } from './services/dynamic-component.service';
 import { LucideAngularModule } from 'lucide-angular';
@@ -53,6 +54,7 @@ export const appConfig: ApplicationConfig = {
 		// Angular core providers
 		provideZoneChangeDetection({ eventCoalescing: true }),
 		provideAnimations(),
+		provideHttpClient(),
 
 		// Lucide icons
 		LucideAngularModule.pick(appIcons).providers || [],

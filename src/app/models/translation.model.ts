@@ -187,6 +187,53 @@ export const SCHEMA_TABS: Record<FolderSchema, FolderTab[]> = {
 };
 
 /**
+ * Editorial status — simplified 4-state Kanban for MVP
+ */
+export type EditorialStatus = 'Draft' | 'In Review' | 'Approved' | 'Published';
+
+export const EDITORIAL_STATUSES: EditorialStatus[] = [
+	'Draft', 'In Review', 'Approved', 'Published'
+];
+
+export const EDITORIAL_STATUS_COLORS: Record<EditorialStatus, string> = {
+	'Draft': '#94a3b8',
+	'In Review': '#f59e0b',
+	'Approved': '#3b82f6',
+	'Published': '#22c55e'
+};
+
+/**
+ * Map a CMS lifecycle status to simplified editorial status
+ */
+export function mapLifecycleToEditorial(lifecycleStatus?: LifecycleStatus | string): EditorialStatus {
+	if (!lifecycleStatus) return 'Draft';
+	switch (lifecycleStatus) {
+		case 'In Quotation':
+			return 'Draft';
+		case 'In Translation':
+		case 'In QA':
+			return 'In Review';
+		case 'In Editorial Review':
+		case 'Published to ML':
+			return 'Approved';
+		case 'Published':
+			return 'Published';
+		default:
+			return 'Draft';
+	}
+}
+
+/**
+ * Generic CMS page field for dynamic schema rendering
+ */
+export interface CmsPageField {
+	name: string;
+	value: any;
+	type: 'text' | 'date' | 'link' | 'list' | 'dropdown' | 'table' | 'rich-text' | 'unknown';
+	label: string;
+}
+
+/**
  * Import row from Excel
  */
 export interface ExcelImportRow {

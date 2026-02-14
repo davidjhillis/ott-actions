@@ -9,20 +9,27 @@ import { BreadcrumbSegment } from '../../services/folder-view.service';
 	imports: [CommonModule, LucideIconComponent],
 	template: `
 		<nav class="breadcrumb-nav">
-			<button class="home-btn" (click)="navigate.emit(breadcrumbs[0])" title="Home">
-				<ott-icon name="arrow-left" [size]="14"></ott-icon>
-				Home
-			</button>
-			<span class="separator">/</span>
-			<ng-container *ngFor="let crumb of breadcrumbs; let last = last; let i = index">
+			<ng-container *ngFor="let crumb of breadcrumbs; let last = last; let first = first">
+				<!-- First crumb gets back arrow -->
 				<button
-					*ngIf="!last"
+					*ngIf="first && !last"
+					class="crumb-btn first-crumb"
+					(click)="navigate.emit(crumb)"
+					[title]="crumb.path">
+					<ott-icon name="arrow-left" [size]="13"></ott-icon>
+					{{ crumb.name }}
+				</button>
+				<!-- Middle crumbs -->
+				<button
+					*ngIf="!first && !last"
 					class="crumb-btn"
 					(click)="navigate.emit(crumb)"
 					[title]="crumb.path">
 					{{ crumb.name }}
 				</button>
+				<!-- Last crumb is current (not clickable) -->
 				<span *ngIf="last" class="crumb-current">{{ crumb.name }}</span>
+				<!-- Separator between crumbs -->
 				<span *ngIf="!last" class="separator">/</span>
 			</ng-container>
 		</nav>
@@ -38,22 +45,11 @@ import { BreadcrumbSegment } from '../../services/folder-view.service';
 			padding: 8px 0;
 			flex-wrap: wrap;
 		}
-		.home-btn {
+		.first-crumb {
 			display: inline-flex;
 			align-items: center;
 			gap: 4px;
-			border: none;
-			background: none;
-			cursor: pointer;
-			color: var(--ott-primary);
-			font-size: 12px;
-			font-family: var(--ott-font);
-			font-weight: 500;
-			padding: 2px 6px;
-			border-radius: var(--ott-radius-sm);
-			transition: background 0.15s;
 		}
-		.home-btn:hover { background: var(--ott-bg-hover); }
 		.crumb-btn {
 			border: none;
 			background: none;

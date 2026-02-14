@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideIconComponent } from '../shared/lucide-icon.component';
 import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../models/translation.model';
@@ -48,7 +48,7 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 					</div>
 
 					<div class="send-footer">
-						<button class="btn-primary" [disabled]="!canSend">
+						<button class="btn-primary" [disabled]="!canSend" (click)="onAddToProject()">
 							<ott-icon name="send" [size]="13"></ott-icon>
 							Add to Project
 						</button>
@@ -84,11 +84,11 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 
 			<!-- Quick actions -->
 			<div class="quick-actions">
-				<button class="action-btn">
+				<button class="action-btn" (click)="onUploadSourceFiles()">
 					<ott-icon name="upload" [size]="13"></ott-icon>
 					Upload Source Files
 				</button>
-				<button class="action-btn">
+				<button class="action-btn" (click)="onAddCollection()">
 					<ott-icon name="folder-plus" [size]="13"></ott-icon>
 					Add Collection
 				</button>
@@ -210,10 +210,14 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 		.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 	`]
 })
-export class TranslationTabComponent {
+export class TranslationTabComponent implements OnChanges {
 	@Input() translatedCollections: TranslatedStandardCollection[] = [];
 	@Input() tmProjects: TMProject[] = [];
 	@Input() selectedItems: FolderChildItem[] = [];
+
+	@Output() addToProject = new EventEmitter<{ projectId: string | null; items: FolderChildItem[]; isNew: boolean }>();
+	@Output() uploadSourceFiles = new EventEmitter<void>();
+	@Output() addCollection = new EventEmitter<void>();
 
 	sendExpanded = false;
 	collectionsExpanded = true;
@@ -226,6 +230,13 @@ export class TranslationTabComponent {
 		'In Editorial Review': '#3b82f6', 'Published to ML': '#22c55e', 'Published': '#059669'
 	};
 
+	ngOnChanges(changes: SimpleChanges): void {
+		// Auto-expand Send to Translation when items are selected
+		if (changes['selectedItems'] && this.selectedItems.length > 0) {
+			this.sendExpanded = true;
+		}
+	}
+
 	get canSend(): boolean {
 		return this.selectedItems.length > 0 && (this.selectedProjectId !== null || this.projectMode === 'new');
 	}
@@ -233,4 +244,21 @@ export class TranslationTabComponent {
 	getStatusColor(status: string): string { return this.statusColors[status] || '#94a3b8'; }
 	trackById(_: number, item: TranslatedStandardCollection): string { return item.id; }
 	showMore(): void { this.visibleCollections += 20; }
+
+	onAddToProject(): void {
+		if (!this.canSend) return;
+		this.addToProject.emit({
+			projectId: this.projectMode === 'existing' ? this.selectedProjectId : null,
+			items: this.selectedItems,
+			isNew: this.projectMode === 'new'
+		});
+	}
+
+	onUploadSourceFiles(): void {
+		this.uploadSourceFiles.emit();
+	}
+
+	onAddCollection(): void {
+		this.addCollection.emit();
+	}
 }

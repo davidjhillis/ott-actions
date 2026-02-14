@@ -1,14 +1,15 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { BehaviorSubject, Observable, of, forkJoin } from 'rxjs';
+import { map, catchError, tap } from 'rxjs/operators';
 import { CMSCommunicationsService } from './cms-communications.service';
+import { CmsApiService, CmsPageData, CmsAssetChild, CmsPageProperties } from './cms-api.service';
 import { AssetContext } from '../models/asset-context.model';
 import {
 	FolderSchema, FolderTab, FolderChildItem,
 	DesignationCollectionMetadata, StandardDatedVersionMetadata,
 	TranslationBatchMetadata, TranslatedStandardCollection,
 	TMProject, HealthcheckStatusEntry, LifecycleStatus,
-	LIFECYCLE_STATUSES, SCHEMA_TABS
+	LIFECYCLE_STATUSES, SCHEMA_TABS, CmsPageField
 } from '../models/translation.model';
 
 export interface BreadcrumbSegment {
@@ -26,6 +27,10 @@ export interface FolderViewData {
 	translatedCollections: TranslatedStandardCollection[];
 	tmProjects: TMProject[];
 	healthcheck: HealthcheckStatusEntry[];
+	/** Dynamic fields parsed from CMS page data (for dynamic rendering) */
+	pageFields: CmsPageField[];
+	/** Raw page data from CMS */
+	rawPageData: CmsPageData | null;
 }
 
 @Injectable({
@@ -35,18 +40,75 @@ export class FolderViewService {
 	private viewDataSubject = new BehaviorSubject<FolderViewData | null>(null);
 	public viewData$ = this.viewDataSubject.asObservable();
 
-	constructor(private cms: CMSCommunicationsService) {}
+	constructor(
+		private cms: CMSCommunicationsService,
+		private cmsApi: CmsApiService
+	) {}
 
 	/**
-	 * Resolve folder view data from asset context
+	 * Resolve folder view data from asset context.
+	 * Tries REST API first, falls back to postMessage bridge, then demo data.
 	 */
 	loadFolderView(ctx: AssetContext): void {
-		if (this.cms.isDevMode) {
-			this.viewDataSubject.next(this.getDemoData(ctx));
-			return;
-		}
+		// Try REST API first
+		this.cmsApi.checkAvailability().subscribe(available => {
+			if (available) {
+				this.loadFromRestApi(ctx);
+			} else if (!this.cms.isDevMode) {
+				this.loadFromPostMessage(ctx);
+			} else {
+				// Dev mode fallback
+				this.viewDataSubject.next(this.getDemoData(ctx));
+			}
+		});
+	}
 
-		// Production: fetch from CMS
+	/**
+	 * Load data from the REST API (Swagger endpoint)
+	 */
+	private loadFromRestApi(ctx: AssetContext): void {
+		forkJoin({
+			pageData: this.cmsApi.getPageData(ctx.id).pipe(catchError(() => of(null))),
+			children: this.cmsApi.getAssetChildren(ctx.id).pipe(catchError(() => of([] as CmsAssetChild[]))),
+			properties: this.cmsApi.getPageProperties(ctx.id).pipe(catchError(() => of(null)))
+		}).subscribe({
+			next: ({ pageData, children, properties }) => {
+				const schema = this.resolveSchema(pageData?.Schema || properties?.Schema || ctx.schema);
+				const breadcrumbs = this.buildBreadcrumbsFromProperties(properties, ctx);
+				const childItems = this.mapAssetChildren(children);
+				const pageFields = pageData ? this.cmsApi.parsePageFields(pageData) : [];
+
+				// Try to extract typed metadata from page data
+				const metadata = pageData ? this.extractTypedMetadata(schema, pageData) : null;
+
+				// Extract translated collections from children if schema warrants it
+				const translatedCollections = this.extractTranslatedCollections(children, pageData);
+				const healthcheck = this.buildHealthcheck(translatedCollections);
+
+				this.viewDataSubject.next({
+					schema,
+					tabs: this.getTabsForSchema(schema),
+					breadcrumbs,
+					children: childItems,
+					metadata,
+					translatedCollections,
+					tmProjects: this.extractTmProjects(pageData),
+					healthcheck,
+					pageFields,
+					rawPageData: pageData
+				});
+			},
+			error: () => {
+				// Fall back to demo data
+				this.viewDataSubject.next(this.getDemoData(ctx));
+			}
+		});
+	}
+
+	/**
+	 * Load from CMS postMessage bridge (production inside iframe)
+	 */
+	private loadFromPostMessage(ctx: AssetContext): void {
 		this.cms.callService<any>({
 			service: 'SiteTreeServices',
 			action: 'GetPageProperties',
@@ -78,9 +140,27 @@ export class FolderViewService {
 	}
 
 	/**
-	 * Build breadcrumbs from a path string
+	 * Build breadcrumbs from CMS page properties (real path, no "Home")
 	 */
-	buildBreadcrumbs(path: string, currentId: string, currentName: string): BreadcrumbSegment[] {
+	buildBreadcrumbsFromProperties(properties: CmsPageProperties | null, ctx: AssetContext): BreadcrumbSegment[] {
+		// Use BreadcrumbPath from CMS if available
+		if (properties?.BreadcrumbPath && properties.BreadcrumbPath.length > 0) {
+			return properties.BreadcrumbPath.map(bp => ({
+				id: bp.ID,
+				name: bp.Name,
+				path: ''
+			}));
+		}
+
+		// Fall back to parsing the Path string
+		const path = properties?.Path || ctx.path;
+		return this.buildBreadcrumbsFromPath(path, ctx.id, ctx.name);
+	}
+
+	/**
+	 * Build breadcrumbs from a path string — no "Home" prefix
+	 */
+	buildBreadcrumbsFromPath(path: string, currentId: string, currentName: string): BreadcrumbSegment[] {
 		if (!path) return [{ id: currentId, name: currentName, path: '' }];
 
 		const segments = path.split('/').filter(s => s.length > 0);
@@ -129,7 +209,6 @@ export class FolderViewService {
 	updateLifecycleStatus(itemId: string, newStatus: LifecycleStatus): Observable<boolean> {
 		if (this.cms.isDevMode) {
 			console.log(`[IGX-OTT] Dev: Updated ${itemId} → ${newStatus}`);
-			// Update in-memory demo data
 			const current = this.viewDataSubject.value;
 			if (current) {
 				const item = current.translatedCollections.find(c => c.id === itemId);
@@ -154,17 +233,134 @@ export class FolderViewService {
 
 	// -- Private helpers --
 
+	/**
+	 * Map CMS asset children to FolderChildItem[]
+	 */
+	private mapAssetChildren(children: CmsAssetChild[]): FolderChildItem[] {
+		return children.map(child => ({
+			id: child.ID,
+			name: child.Name,
+			type: child.Schema || child.Type || 'Unknown',
+			schema: child.Schema,
+			isFolder: child.IsFolder,
+			modified: child.LastModifiedDate ? this.formatDate(child.LastModifiedDate) : undefined,
+			size: child.Size ? this.formatSize(child.Size) : undefined
+		}));
+	}
+
+	/**
+	 * Extract typed metadata from CMS page data based on schema
+	 */
+	private extractTypedMetadata(
+		schema: FolderSchema,
+		pageData: CmsPageData
+	): DesignationCollectionMetadata | StandardDatedVersionMetadata | TranslationBatchMetadata | null {
+		const el = pageData.Elements || {};
+		const attr = pageData.Attributes || {};
+
+		switch (schema) {
+			case 'DesignationCollection':
+				return {
+					baseDesignation: el['BaseDesignation'] || el['Designation'] || pageData.Name || '',
+					organization: el['Organization'] || attr['Organization'] || '',
+					committee: el['Committee'] || attr['Committee'] || '',
+					committeeCode: el['CommitteeCode'] || attr['CommitteeCode'] || '',
+					homeEditor: el['HomeEditor'] || attr['HomeEditor'] || '',
+					homeEditorEmail: el['HomeEditorEmail'] || attr['HomeEditorEmail'] || '',
+					reportNumber: el['ReportNumber'] || attr['ReportNumber'],
+					translationMaintenance: this.extractTranslationMaintenance(el)
+				};
+
+			case 'StandardDatedVersion':
+				return {
+					standardTitle: el['StandardTitle'] || el['Title'] || pageData.Name || '',
+					actionType: el['ActionType'] || attr['ActionType'] || '',
+					approvalDate: el['ApprovalDate'] || attr['ApprovalDate'],
+					publicationDate: el['PublicationDate'] || attr['PublicationDate'],
+					designationCollectionId: el['DesignationCollectionID'] || attr['ParentID'],
+					designationCollectionName: el['DesignationCollectionName']
+				};
+
+			case 'TranslationBatch':
+				return {
+					batchId: el['BatchID'] || pageData.ID || '',
+					type: el['Type'] || el['BatchType'] || '',
+					vendor: el['Vendor'] || '',
+					dueDate: el['DueDate'] || attr['DueDate'],
+					assignedTo: el['AssignedTo'] || attr['AssignedTo'],
+					standardCount: parseInt(el['StandardCount'] || '0', 10),
+					daysElapsed: parseInt(el['DaysElapsed'] || '0', 10),
+					productionReadiness: el['ProductionReadiness'] || 'Not Ready',
+					status: el['Status'] || 'Open'
+				};
+
+			default:
+				return null;
+		}
+	}
+
+	/**
+	 * Extract translation maintenance table from elements
+	 */
+	private extractTranslationMaintenance(el: Record<string, any>): any[] {
+		const tm = el['TranslationMaintenance'] || el['LanguageAssignments'];
+		if (Array.isArray(tm)) return tm;
+		return [];
+	}
+
+	/**
+	 * Extract translated collections from child assets
+	 */
+	private extractTranslatedCollections(children: CmsAssetChild[], pageData: CmsPageData | null): TranslatedStandardCollection[] {
+		return children
+			.filter(c => {
+				const schema = (c.Schema || '').toLowerCase();
+				return schema.includes('translatedstandard') || schema.includes('translated');
+			})
+			.map(c => ({
+				id: c.ID,
+				name: c.Name,
+				locale: this.extractLocale(c.Name),
+				language: this.extractLanguage(c.Name),
+				vendor: 'SDL',
+				lifecycleStatus: 'In Translation' as LifecycleStatus,
+				daysElapsed: 0,
+				priority: 'Medium' as const,
+				modified: c.LastModifiedDate
+			}));
+	}
+
+	/**
+	 * Extract TM projects from page data
+	 */
+	private extractTmProjects(pageData: CmsPageData | null): TMProject[] {
+		if (!pageData?.Elements?.['TMProjects']) return [];
+		const projects = pageData.Elements['TMProjects'];
+		if (!Array.isArray(projects)) return [];
+		return projects.map((p: any) => ({
+			id: p.ID || p.id || '',
+			name: p.Name || p.name || '',
+			locale: p.Locale || p.locale || '',
+			language: p.Language || p.language || '',
+			itemCount: parseInt(p.ItemCount || p.itemCount || '0', 10),
+			dueDate: p.DueDate || p.dueDate,
+			status: p.Status || p.status || 'Open'
+		}));
+	}
+
 	private mapCmsToViewData(ctx: AssetContext, props: any): FolderViewData {
 		const schema = this.resolveSchema(props?.Schema || ctx.schema);
 		return {
 			schema,
 			tabs: this.getTabsForSchema(schema),
-			breadcrumbs: this.buildBreadcrumbs(ctx.path, ctx.id, ctx.name),
+			breadcrumbs: this.buildBreadcrumbsFromPath(ctx.path, ctx.id, ctx.name),
 			children: [],
 			metadata: null,
 			translatedCollections: [],
 			tmProjects: [],
-			healthcheck: []
+			healthcheck: [],
+			pageFields: [],
+			rawPageData: null
 		};
 	}
 
@@ -181,6 +377,36 @@ export class FolderViewService {
 		});
 	}
 
+	private extractLocale(name: string): string {
+		const match = name.match(/__([a-z]{2}-[A-Z]{2})$/);
+		return match ? match[1] : '';
+	}
+
+	private extractLanguage(name: string): string {
+		const locale = this.extractLocale(name);
+		const map: Record<string, string> = {
+			'es-CL': 'Chilean Spanish', 'pt-BR': 'Brazilian Portuguese',
+			'fr-FR': 'French', 'de-DE': 'German', 'ja-JP': 'Japanese',
+			'zh-CN': 'Chinese (Simplified)', 'ko-KR': 'Korean'
+		};
+		return map[locale] || locale;
+	}
+
+	private formatDate(dateStr: string): string {
+		try {
+			const d = new Date(dateStr);
+			return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+		} catch {
+			return dateStr;
+		}
+	}
+
+	private formatSize(bytes: number): string {
+		if (bytes < 1024) return `${bytes} B`;
+		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+	}
+
 	/**
 	 * Demo data for standalone dev preview
 	 */
@@ -190,19 +416,21 @@ export class FolderViewService {
 		const demoCollections = this.getDemoTranslatedCollections();
 		const healthcheck = this.buildHealthcheck(demoCollections);
 
+		// No "Home" — start from actual root folder
 		const breadcrumbs: BreadcrumbSegment[] = [
-			{ id: 'home', name: 'Home', path: '/' },
 			{ id: 'af/1', name: 'Standards Documents', path: '/Standards Documents' },
 			{ id: 'af/5', name: 'E0008_E0008M', path: '/Standards Documents/E0008_E0008M' },
 			{ id: 'af/7', name: 'E0008_E0008M-25', path: '/Standards Documents/E0008_E0008M/E0008_E0008M-25' }
 		];
 
 		const children: FolderChildItem[] = [
-			{ id: 'af/12', name: 'E0008_E0008M-16AE01: Standard Test Methods for Tension Testing of Metallic Materials', type: 'Std Coll', isFolder: true, modified: '11/21/2025' },
-			{ id: 'af/13', name: 'E0008_E0008M-21: Standard Test Methods for Tension Testing of Metallic Materials', type: 'Std Coll', isFolder: true, modified: '11/21/2025' },
-			{ id: 'af/14', name: 'E0008_E0008M-22: Standard Test Methods for Tension Testing of Metallic Materials', type: 'Std Coll', isFolder: true, modified: '11/21/2025' },
-			{ id: 'af/15', name: 'E0008_E0008M-24: Standard Test Methods for Tension Testing of Metallic Materials', type: 'Std Coll', isFolder: true, modified: '11/21/2025' },
-			{ id: 'af/16', name: 'E0008_E0008M-25: Standard Test Methods for Tension Testing of Metallic Materials', type: 'Std Coll', isFolder: true, modified: '11/21/2025' }
+			{ id: 'af/12', name: 'E0008_E0008M-16AE01: Standard Test Methods for Tension Testing of Metallic Materials', type: 'Standard Collection', schema: 'StandardCollection', isFolder: true, modified: '11/21/2025' },
+			{ id: 'af/13', name: 'E0008_E0008M-21: Standard Test Methods for Tension Testing of Metallic Materials', type: 'Standard Collection', schema: 'StandardCollection', isFolder: true, modified: '11/21/2025' },
+			{ id: 'af/14', name: 'E0008_E0008M-22: Standard Test Methods for Tension Testing of Metallic Materials', type: 'Standard Collection', schema: 'StandardCollection', isFolder: true, modified: '11/21/2025' },
+			{ id: 'af/15', name: 'E0008_E0008M-24: Standard Test Methods for Tension Testing of Metallic Materials', type: 'Standard Collection', schema: 'StandardCollection', isFolder: true, modified: '11/21/2025' },
+			{ id: 'af/16', name: 'E0008_E0008M-25: Standard Test Methods for Tension Testing of Metallic Materials', type: 'Standard Collection', schema: 'StandardCollection', isFolder: true, modified: '11/21/2025' },
+			{ id: 'af/17', name: 'E0008_source.dxml', type: 'DXML', isFolder: false, modified: '10/15/2025', size: '245 KB' },
+			{ id: 'af/18', name: 'E0008_E0008M-25.pdf', type: 'PDF', isFolder: false, modified: '11/01/2025', size: '1.2 MB' }
 		];
 
 		const metadata: DesignationCollectionMetadata = {
@@ -234,6 +462,22 @@ export class FolderViewService {
 			{ id: 'tm-2', name: 'SDL_Nov_28_2025', locale: 'es-CL', language: 'Spanish (Chile)', itemCount: 1, dueDate: '12/22/2025', status: 'Open' }
 		];
 
+		// Demo page fields for dynamic rendering
+		const pageFields: CmsPageField[] = [
+			{ name: 'BaseDesignation', value: 'E0008_E0008M', type: 'text', label: 'Base Designation' },
+			{ name: 'Organization', value: 'ASTM International', type: 'text', label: 'Organization' },
+			{ name: 'Committee', value: 'E28 — Mechanical Testing', type: 'text', label: 'Committee' },
+			{ name: 'HomeEditor', value: 'Emilie Whealen', type: 'text', label: 'Home Editor' },
+			{ name: 'HomeEditorEmail', value: 'ewhealen@astm.org', type: 'link', label: 'Home Editor Email' },
+			{ name: 'ReportNumber', value: 'RPT-2025-0042', type: 'text', label: 'Report Number' },
+			{
+				name: 'TranslationMaintenance',
+				value: metadata.translationMaintenance,
+				type: 'table',
+				label: 'Translation Maintenance'
+			}
+		];
+
 		return {
 			schema: schema === 'default' ? 'DesignationCollection' : schema,
 			tabs: this.getTabsForSchema(schema === 'default' ? 'DesignationCollection' : schema),
@@ -242,7 +486,9 @@ export class FolderViewService {
 			metadata,
 			translatedCollections: demoCollections,
 			tmProjects,
-			healthcheck
+			healthcheck,
+			pageFields,
+			rawPageData: null
 		};
 	}
 
