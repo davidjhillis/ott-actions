@@ -16,256 +16,160 @@ interface KanbanColumn {
 	imports: [CommonModule, FormsModule, LucideIconComponent],
 	template: `
 		<div class="kanban-tab">
-			<!-- Toolbar -->
-			<div class="kanban-toolbar">
-				<div class="toolbar-left">
-					<div class="search-box">
-						<ott-icon name="search" [size]="13" color="var(--ott-text-muted)"></ott-icon>
-						<input type="text" placeholder="Search..." [(ngModel)]="searchQuery" (input)="filterCards()">
-					</div>
-					<div class="filter-group">
-						<select class="filter-select" [(ngModel)]="filterAssignee" (change)="filterCards()">
-							<option value="">All Assignees</option>
-							<option *ngFor="let a of assignees" [value]="a">{{ a }}</option>
-						</select>
-						<select class="filter-select" [(ngModel)]="filterLocale" (change)="filterCards()">
-							<option value="">All Languages</option>
-							<option *ngFor="let l of locales" [value]="l">{{ l }}</option>
-						</select>
-					</div>
+			<!-- Filters -->
+			<div class="kanban-filters">
+				<div class="search-box">
+					<ott-icon name="search" [size]="13" color="var(--ott-text-muted)"></ott-icon>
+					<input type="text" placeholder="Filter..." [(ngModel)]="searchQuery" (input)="filterCards()">
 				</div>
+				<select class="filter-select" [(ngModel)]="filterAssignee" (change)="filterCards()">
+					<option value="">All assignees</option>
+					<option *ngFor="let a of assignees" [value]="a">{{ a }}</option>
+				</select>
+				<select class="filter-select" [(ngModel)]="filterLocale" (change)="filterCards()">
+					<option value="">All languages</option>
+					<option *ngFor="let l of locales" [value]="l">{{ l }}</option>
+				</select>
 			</div>
 
 			<!-- Board -->
-			<div class="kanban-board">
-				<div class="kanban-column" *ngFor="let col of columns; trackBy: trackByStatus"
+			<div class="board">
+				<div class="column" *ngFor="let col of columns; trackBy: trackByStatus"
 					(dragover)="onDragOver($event)"
 					(drop)="onDrop($event, col.status)">
-
-					<!-- Column header -->
-					<div class="col-header" [style.border-top-color]="col.color">
-						<span class="col-count">{{ col.items.length }}</span>
-						<span class="col-title">{{ getShortStatus(col.status) }}</span>
+					<div class="col-head">
+						<span class="col-dot" [style.background]="col.color"></span>
+						<span class="col-label">{{ shortName[col.status] }}</span>
+						<span class="col-num">{{ col.items.length }}</span>
 					</div>
-
-					<!-- Cards -->
-					<div class="col-cards">
-						<div class="kanban-card"
+					<div class="col-body">
+						<div class="card"
 							*ngFor="let card of col.items.slice(0, maxVisible); trackBy: trackById"
 							draggable="true"
 							(dragstart)="onDragStart($event, card)"
-							(dragend)="onDragEnd()">
-							<div class="card-name font-mono">{{ card.name }}</div>
-							<div class="card-meta">
-								<span class="card-assignee" *ngIf="card.assignee">
-									<ott-icon name="user" [size]="10"></ott-icon>
-									{{ card.assignee }}
-								</span>
-								<span class="card-assignee unassigned" *ngIf="!card.assignee">
-									<ott-icon name="user" [size]="10"></ott-icon>
-									—
-								</span>
-								<span class="card-priority" [ngClass]="'priority-' + card.priority.toLowerCase()">
-									{{ card.priority }}
-								</span>
+							(dragend)="draggedItem = null">
+							<div class="card-title">{{ card.name }}</div>
+							<div class="card-foot">
+								<span class="card-user">{{ card.assignee || '—' }}</span>
+								<span class="card-pill" [ngClass]="'p-' + card.priority.toLowerCase()">{{ card.priority[0] }}</span>
 							</div>
 						</div>
-
-						<!-- More indicator -->
-						<div class="more-cards" *ngIf="col.items.length > maxVisible">
+						<div class="more" *ngIf="col.items.length > maxVisible">
 							+{{ col.items.length - maxVisible }} more
 						</div>
-
-						<!-- Empty column -->
-						<div class="empty-column" *ngIf="col.items.length === 0">
-							<span class="empty-text">No items</span>
-						</div>
+						<div class="empty" *ngIf="col.items.length === 0">—</div>
 					</div>
 				</div>
 			</div>
 
-			<div class="kanban-hint">
-				Drag cards between columns to change lifecycle status.
-			</div>
+			<div class="hint">Drag cards between columns to update status</div>
 		</div>
 	`,
 	styles: [`
 		:host { display: block; font-family: var(--ott-font); }
 
-		/* Toolbar */
-		.kanban-toolbar {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			margin-bottom: 12px;
+		/* Filters */
+		.kanban-filters {
+			display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
 		}
-		.toolbar-left { display: flex; align-items: center; gap: 8px; }
 		.search-box {
-			display: flex;
-			align-items: center;
-			gap: 6px;
-			padding: 5px 10px;
-			border: 1px solid var(--ott-border);
-			border-radius: var(--ott-radius-md);
-			background: var(--ott-bg);
+			display: flex; align-items: center; gap: 5px;
+			padding: 4px 10px; border: 1px solid var(--ott-border-light);
+			border-radius: var(--ott-radius-md); background: var(--ott-bg);
+			transition: border-color 0.15s, box-shadow 0.15s;
 		}
+		.search-box:focus-within { border-color: var(--ott-primary); box-shadow: 0 0 0 2px var(--ott-ring); }
 		.search-box input {
-			border: none;
-			outline: none;
-			font-size: 12px;
-			font-family: var(--ott-font);
-			color: var(--ott-text);
-			background: transparent;
-			width: 130px;
+			border: none; outline: none; font-size: 12px;
+			font-family: var(--ott-font); color: var(--ott-text);
+			background: transparent; width: 110px;
 		}
-		.search-box:focus-within {
-			border-color: var(--ott-primary);
-			box-shadow: 0 0 0 3px var(--ott-ring);
-		}
-		.filter-group { display: flex; gap: 6px; }
 		.filter-select {
-			padding: 5px 8px;
-			border: 1px solid var(--ott-border);
-			border-radius: var(--ott-radius-md);
-			font-size: 12px;
-			font-family: var(--ott-font);
-			color: var(--ott-text);
-			background: var(--ott-bg);
-			cursor: pointer;
-		}
-		.filter-select:focus {
-			outline: none;
-			border-color: var(--ott-primary);
+			padding: 5px 8px; border: 1px solid var(--ott-border-light);
+			border-radius: var(--ott-radius-md); font-size: 12px;
+			font-family: var(--ott-font); color: var(--ott-text-secondary);
+			background: var(--ott-bg); cursor: pointer;
 		}
 
 		/* Board */
-		.kanban-board {
+		.board {
 			display: grid;
 			grid-template-columns: repeat(6, 1fr);
-			gap: 8px;
-			min-height: 400px;
+			gap: 6px;
 		}
 
 		/* Column */
-		.kanban-column {
-			background: var(--ott-bg-muted);
+		.column {
 			border-radius: var(--ott-radius-md);
-			border: 1px solid var(--ott-border-light);
-			border-top: 3px solid var(--ott-border);
-			display: flex;
-			flex-direction: column;
-			min-height: 200px;
+			background: var(--ott-bg-muted);
+			min-height: 180px;
+			display: flex; flex-direction: column;
 		}
-		.col-header {
-			padding: 8px 10px;
-			display: flex;
-			align-items: center;
-			gap: 6px;
-			border-bottom: 1px solid var(--ott-border-light);
+		.col-head {
+			display: flex; align-items: center; gap: 5px;
+			padding: 7px 8px;
 		}
-		.col-count {
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			width: 22px;
-			height: 22px;
-			border-radius: var(--ott-radius-full);
-			background: var(--ott-bg-subtle);
-			font-size: 11px;
-			font-weight: 700;
-			color: var(--ott-text-secondary);
+		.col-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+		.col-label {
+			flex: 1; font-size: 10px; font-weight: 600;
+			text-transform: uppercase; letter-spacing: 0.3px;
+			color: var(--ott-text-muted);
+			overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 		}
-		.col-title {
-			font-size: 11px;
-			font-weight: 600;
-			color: var(--ott-text-secondary);
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
+		.col-num {
+			font-size: 10px; font-weight: 700; color: var(--ott-text-muted);
+			min-width: 16px; text-align: center;
 		}
 
 		/* Cards area */
-		.col-cards {
-			flex: 1;
-			padding: 6px;
-			display: flex;
-			flex-direction: column;
-			gap: 4px;
-			overflow-y: auto;
-			max-height: 500px;
+		.col-body {
+			flex: 1; padding: 0 4px 4px;
+			display: flex; flex-direction: column; gap: 3px;
+			overflow-y: auto; max-height: 420px;
 		}
 
 		/* Card */
-		.kanban-card {
+		.card {
 			background: var(--ott-bg);
 			border: 1px solid var(--ott-border-light);
 			border-radius: var(--ott-radius-sm);
-			padding: 8px 10px;
-			cursor: grab;
-			transition: box-shadow 0.15s, border-color 0.15s;
-			user-select: none;
+			padding: 6px 8px;
+			cursor: grab; user-select: none;
+			transition: box-shadow 0.12s, border-color 0.12s;
 		}
-		.kanban-card:hover {
-			border-color: var(--ott-border);
-			box-shadow: var(--ott-shadow-sm);
-		}
-		.kanban-card:active { cursor: grabbing; }
-		.card-name {
-			font-size: 11px;
-			font-weight: 600;
-			color: var(--ott-text);
-			margin-bottom: 4px;
+		.card:hover { border-color: var(--ott-border); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+		.card:active { cursor: grabbing; }
+		.card-title {
+			font-size: 10px; font-weight: 600;
+			font-family: var(--ott-font-mono);
+			color: var(--ott-text); line-height: 1.3;
 			word-break: break-all;
-			line-height: 1.3;
 		}
-		.font-mono { font-family: var(--ott-font-mono); }
-		.card-meta {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			gap: 4px;
+		.card-foot {
+			display: flex; align-items: center; justify-content: space-between;
+			margin-top: 4px;
 		}
-		.card-assignee {
-			display: inline-flex;
-			align-items: center;
-			gap: 3px;
-			font-size: 10px;
-			color: var(--ott-text-secondary);
+		.card-user { font-size: 10px; color: var(--ott-text-muted); }
+		.card-pill {
+			font-size: 9px; font-weight: 700; padding: 1px 4px;
+			border-radius: var(--ott-radius-sm); line-height: 1;
 		}
-		.card-assignee.unassigned { color: var(--ott-text-muted); }
-		.card-priority {
-			font-size: 9px;
-			font-weight: 600;
-			padding: 1px 5px;
-			border-radius: var(--ott-radius-sm);
-		}
-		.priority-high { background: #fef2f2; color: #991b1b; }
-		.priority-medium { background: var(--ott-warning-light); color: #92400e; }
-		.priority-low { background: var(--ott-bg-subtle); color: var(--ott-text-muted); }
+		.p-high { background: #fef2f2; color: #991b1b; }
+		.p-medium { background: var(--ott-warning-light); color: #92400e; }
+		.p-low { background: var(--ott-bg-subtle); color: var(--ott-text-muted); }
 
-		.more-cards {
-			text-align: center;
-			font-size: 11px;
-			color: var(--ott-primary);
-			padding: 4px;
-			cursor: pointer;
+		.more {
+			text-align: center; padding: 4px; font-size: 10px;
+			color: var(--ott-primary); cursor: pointer;
 		}
-		.more-cards:hover { text-decoration: underline; }
-		.empty-column {
-			flex: 1;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
-		.empty-text {
-			font-size: 11px;
-			color: var(--ott-text-muted);
+		.more:hover { text-decoration: underline; }
+		.empty {
+			flex: 1; display: flex; align-items: center; justify-content: center;
+			font-size: 11px; color: var(--ott-text-muted);
 		}
 
-		.kanban-hint {
-			margin-top: 10px;
-			font-size: 12px;
-			color: var(--ott-text-muted);
+		.hint {
+			margin-top: 8px; font-size: 11px; color: var(--ott-text-muted);
 			text-align: center;
 		}
 	`]
@@ -278,104 +182,64 @@ export class KanbanTabComponent implements OnChanges {
 	searchQuery = '';
 	filterAssignee = '';
 	filterLocale = '';
-	maxVisible = 10;
-
+	maxVisible = 8;
 	assignees: string[] = [];
 	locales: string[] = [];
+	draggedItem: TranslatedStandardCollection | null = null;
 
-	private draggedItem: TranslatedStandardCollection | null = null;
-
-	private shortNames: Record<LifecycleStatus, string> = {
-		'In Quotation': 'In Quot.',
-		'In Translation': 'In Trans.',
-		'In QA': 'In QA',
+	shortName: Record<LifecycleStatus, string> = {
+		'In Quotation': 'Quotation',
+		'In Translation': 'Translation',
+		'In QA': 'QA',
 		'In Editorial Review': 'Editorial',
 		'Published to ML': 'Pub ML',
-		'Published': 'Pub'
+		'Published': 'Published'
 	};
 
-	ngOnChanges(): void {
-		this.buildColumns();
-		this.extractFilters();
-	}
-
-	getShortStatus(status: LifecycleStatus): string {
-		return this.shortNames[status] || status;
-	}
+	ngOnChanges(): void { this.buildColumns(); this.extractFilters(); }
 
 	trackByStatus(_: number, col: KanbanColumn): string { return col.status; }
 	trackById(_: number, item: TranslatedStandardCollection): string { return item.id; }
-
-	filterCards(): void {
-		this.buildColumns();
-	}
+	filterCards(): void { this.buildColumns(); }
 
 	onDragStart(event: DragEvent, item: TranslatedStandardCollection): void {
 		this.draggedItem = item;
-		if (event.dataTransfer) {
-			event.dataTransfer.effectAllowed = 'move';
-			event.dataTransfer.setData('text/plain', item.id);
-		}
-	}
-
-	onDragEnd(): void {
-		this.draggedItem = null;
+		event.dataTransfer?.setData('text/plain', item.id);
 	}
 
 	onDragOver(event: DragEvent): void {
 		event.preventDefault();
-		if (event.dataTransfer) {
-			event.dataTransfer.dropEffect = 'move';
-		}
+		if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
 	}
 
 	onDrop(event: DragEvent, targetStatus: LifecycleStatus): void {
 		event.preventDefault();
-		if (!this.draggedItem) return;
-
-		if (this.draggedItem.lifecycleStatus !== targetStatus) {
-			this.statusChange.emit({
-				itemId: this.draggedItem.id,
-				newStatus: targetStatus
-			});
-
-			// Optimistic update
-			this.draggedItem.lifecycleStatus = targetStatus;
-			this.buildColumns();
-		}
-
+		if (!this.draggedItem || this.draggedItem.lifecycleStatus === targetStatus) return;
+		this.statusChange.emit({ itemId: this.draggedItem.id, newStatus: targetStatus });
+		this.draggedItem.lifecycleStatus = targetStatus;
+		this.buildColumns();
 		this.draggedItem = null;
 	}
 
 	private buildColumns(): void {
 		let filtered = this.collections;
-
 		if (this.searchQuery) {
 			const q = this.searchQuery.toLowerCase();
-			filtered = filtered.filter(c => c.name.toLowerCase().includes(q) || c.designation?.toLowerCase().includes(q));
+			filtered = filtered.filter(c => c.name.toLowerCase().includes(q));
 		}
-		if (this.filterAssignee) {
-			filtered = filtered.filter(c => c.assignee === this.filterAssignee);
-		}
-		if (this.filterLocale) {
-			filtered = filtered.filter(c => c.locale === this.filterLocale);
-		}
+		if (this.filterAssignee) filtered = filtered.filter(c => c.assignee === this.filterAssignee);
+		if (this.filterLocale) filtered = filtered.filter(c => c.locale === this.filterLocale);
 
 		this.columns = LIFECYCLE_STATUSES.map(status => ({
-			status,
-			color: LIFECYCLE_STATUS_COLORS[status],
+			status, color: LIFECYCLE_STATUS_COLORS[status],
 			items: filtered.filter(c => c.lifecycleStatus === status)
 		}));
 	}
 
 	private extractFilters(): void {
-		const assigneeSet = new Set<string>();
-		const localeSet = new Set<string>();
-		for (const c of this.collections) {
-			if (c.assignee) assigneeSet.add(c.assignee);
-			localeSet.add(c.locale);
-		}
-		this.assignees = Array.from(assigneeSet).sort();
-		this.locales = Array.from(localeSet).sort();
+		const a = new Set<string>(), l = new Set<string>();
+		for (const c of this.collections) { if (c.assignee) a.add(c.assignee); l.add(c.locale); }
+		this.assignees = [...a].sort();
+		this.locales = [...l].sort();
 	}
 }

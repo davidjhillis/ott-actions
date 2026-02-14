@@ -8,275 +8,342 @@ import { FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetada
 	standalone: true,
 	imports: [CommonModule, LucideIconComponent],
 	template: `
-		<div class="metadata-card">
-			<div class="card-header">
-				<ott-icon name="folder" [size]="16" color="var(--ott-primary)"></ott-icon>
-				<span class="schema-label">{{ schemaLabel }}</span>
+		<div class="metadata-card" [class.expanded]="expanded">
+			<!-- Always-visible summary row -->
+			<div class="card-summary" (click)="expanded = !expanded">
+				<div class="summary-left">
+					<span class="schema-badge">{{ schemaLabel }}</span>
+
+					<!-- Designation Collection summary -->
+					<ng-container *ngIf="designationMeta">
+						<span class="summary-sep">&middot;</span>
+						<span class="summary-text">{{ designationMeta.committee }}</span>
+						<span class="summary-sep">&middot;</span>
+						<span class="summary-text muted">{{ designationMeta.homeEditor }}</span>
+						<ng-container *ngIf="designationMeta.translationMaintenance.length > 0">
+							<span class="summary-sep">&middot;</span>
+							<span class="lang-pills">
+								<span class="lang-pill" *ngFor="let tm of designationMeta.translationMaintenance">
+									{{ tm.locale }}
+								</span>
+							</span>
+						</ng-container>
+					</ng-container>
+
+					<!-- Batch summary -->
+					<ng-container *ngIf="batchMeta">
+						<span class="summary-sep">&middot;</span>
+						<span class="vendor-badge">{{ batchMeta.vendor }}</span>
+						<span class="summary-sep">&middot;</span>
+						<span class="summary-text">{{ batchMeta.standardCount }} standards</span>
+						<span class="summary-sep">&middot;</span>
+						<span class="readiness-badge" [ngClass]="'readiness-' + batchMeta.productionReadiness.toLowerCase().replace(' ', '-')">
+							{{ batchMeta.productionReadiness }}
+						</span>
+					</ng-container>
+
+					<!-- Dated Version summary -->
+					<ng-container *ngIf="datedVersionMeta">
+						<span class="summary-sep">&middot;</span>
+						<span class="summary-text">{{ datedVersionMeta.actionType }}</span>
+					</ng-container>
+				</div>
+
+				<button class="expand-btn" [class.rotated]="expanded">
+					<ott-icon name="chevron-down" [size]="14"></ott-icon>
+				</button>
 			</div>
 
-			<!-- Designation Collection -->
-			<ng-container *ngIf="schema === 'DesignationCollection' && designationMeta">
-				<div class="meta-grid">
-					<div class="meta-item">
-						<span class="meta-label">Base Designation</span>
-						<span class="meta-value font-mono">{{ designationMeta.baseDesignation }}</span>
-					</div>
-					<div class="meta-item">
-						<span class="meta-label">Organization</span>
-						<span class="meta-value">{{ designationMeta.organization }}</span>
-					</div>
-					<div class="meta-item">
-						<span class="meta-label">Committee</span>
-						<span class="meta-value">{{ designationMeta.committee }}</span>
-					</div>
-					<div class="meta-item">
-						<span class="meta-label">Home Editor</span>
-						<span class="meta-value">{{ designationMeta.homeEditor }}</span>
-					</div>
-					<div class="meta-item" *ngIf="designationMeta.reportNumber">
-						<span class="meta-label">Report #</span>
-						<span class="meta-value font-mono">
-							{{ designationMeta.reportNumber }}
-							<button class="edit-inline-btn" (click)="editReportNumber.emit()" title="Edit">
-								<ott-icon name="pencil" [size]="12"></ott-icon>
-							</button>
-						</span>
-					</div>
-				</div>
-
-				<!-- Translation Maintenance table -->
-				<div class="tm-section" *ngIf="designationMeta.translationMaintenance.length > 0">
-					<div class="tm-header">Translation Maintenance</div>
-					<table class="tm-table">
-						<thead>
-							<tr>
-								<th>Language</th>
-								<th>Vendor</th>
-								<th>Compilations</th>
-							</tr>
-						</thead>
-						<tbody>
-							<tr *ngFor="let tm of designationMeta.translationMaintenance">
-								<td>{{ tm.language }}</td>
-								<td>
-									<span class="vendor-badge">{{ tm.vendor }}</span>
-								</td>
-								<td class="compilations">{{ tm.compilations.join(', ') }}</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-			</ng-container>
-
-			<!-- Standard Dated Version -->
-			<ng-container *ngIf="schema === 'StandardDatedVersion' && datedVersionMeta">
-				<div class="meta-grid">
-					<div class="meta-item span-2">
-						<span class="meta-label">Standard Title</span>
-						<span class="meta-value">{{ datedVersionMeta.standardTitle }}</span>
-					</div>
-					<div class="meta-item">
-						<span class="meta-label">Action Type</span>
-						<span class="meta-value">{{ datedVersionMeta.actionType }}</span>
-					</div>
-					<div class="meta-item" *ngIf="datedVersionMeta.approvalDate">
-						<span class="meta-label">Approval Date</span>
-						<span class="meta-value">{{ datedVersionMeta.approvalDate }}</span>
-					</div>
-					<div class="meta-item" *ngIf="datedVersionMeta.publicationDate">
-						<span class="meta-label">Publication Date</span>
-						<span class="meta-value">{{ datedVersionMeta.publicationDate }}</span>
-					</div>
-					<div class="meta-item" *ngIf="datedVersionMeta.designationCollectionName">
-						<span class="meta-label">Designation Collection</span>
-						<span class="meta-value link" (click)="navigateToCollection.emit(datedVersionMeta.designationCollectionId)">
-							{{ datedVersionMeta.designationCollectionName }}
-						</span>
-					</div>
-				</div>
-			</ng-container>
-
-			<!-- Translation Batch -->
-			<ng-container *ngIf="schema === 'TranslationBatch' && batchMeta">
-				<div class="meta-grid">
-					<div class="meta-item">
-						<span class="meta-label">Batch ID</span>
-						<span class="meta-value font-mono">{{ batchMeta.batchId }}</span>
-					</div>
-					<div class="meta-item">
-						<span class="meta-label">Production Readiness</span>
-						<span class="meta-value">
-							<span class="readiness-badge" [ngClass]="'readiness-' + batchMeta.productionReadiness.toLowerCase().replace(' ', '-')">
-								{{ batchMeta.productionReadiness }}
+			<!-- Expanded detail panel -->
+			<div class="card-details" *ngIf="expanded">
+				<!-- Designation Collection -->
+				<ng-container *ngIf="designationMeta">
+					<div class="detail-grid">
+						<div class="detail-item">
+							<span class="detail-label">Base Designation</span>
+							<span class="detail-value mono">{{ designationMeta.baseDesignation }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Organization</span>
+							<span class="detail-value">{{ designationMeta.organization }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Committee</span>
+							<span class="detail-value">{{ designationMeta.committee }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Home Editor</span>
+							<span class="detail-value">{{ designationMeta.homeEditor }}</span>
+						</div>
+						<div class="detail-item" *ngIf="designationMeta.reportNumber">
+							<span class="detail-label">Report #</span>
+							<span class="detail-value mono">
+								{{ designationMeta.reportNumber }}
+								<button class="edit-inline-btn" (click)="$event.stopPropagation(); editReportNumber.emit()" title="Edit">
+									<ott-icon name="pencil" [size]="11"></ott-icon>
+								</button>
 							</span>
-						</span>
+						</div>
 					</div>
-					<div class="meta-item">
-						<span class="meta-label">Vendor</span>
-						<span class="meta-value"><span class="vendor-badge">{{ batchMeta.vendor }}</span></span>
-					</div>
-					<div class="meta-item">
-						<span class="meta-label">Type</span>
-						<span class="meta-value">{{ batchMeta.type }}</span>
-					</div>
-					<div class="meta-item" *ngIf="batchMeta.dueDate">
-						<span class="meta-label">Due Date</span>
-						<span class="meta-value">{{ batchMeta.dueDate }}</span>
-					</div>
-					<div class="meta-item" *ngIf="batchMeta.assignedTo">
-						<span class="meta-label">Assigned To</span>
-						<span class="meta-value">{{ batchMeta.assignedTo }}</span>
-					</div>
-					<div class="meta-item">
-						<span class="meta-label">Standards</span>
-						<span class="meta-value">{{ batchMeta.standardCount }}</span>
-					</div>
-					<div class="meta-item">
-						<span class="meta-label">Days Elapsed</span>
-						<span class="meta-value">{{ batchMeta.daysElapsed }}</span>
-					</div>
-				</div>
-			</ng-container>
 
-			<!-- Default folder -->
-			<ng-container *ngIf="schema === 'default' || schema === 'StandardCollection'">
-				<div class="meta-grid">
-					<div class="meta-item">
-						<span class="meta-label">Name</span>
-						<span class="meta-value">{{ folderName }}</span>
+					<!-- Translation Maintenance (nested disclosure) -->
+					<div class="tm-section" *ngIf="designationMeta.translationMaintenance.length > 0">
+						<button class="tm-toggle" (click)="$event.stopPropagation(); tmExpanded = !tmExpanded">
+							<ott-icon [name]="tmExpanded ? 'chevron-down' : 'chevron-right'" [size]="12"></ott-icon>
+							Translation Maintenance
+							<span class="tm-count">{{ designationMeta.translationMaintenance.length }}</span>
+						</button>
+						<table class="tm-table" *ngIf="tmExpanded">
+							<thead>
+								<tr><th>Language</th><th>Vendor</th><th>Compilations</th></tr>
+							</thead>
+							<tbody>
+								<tr *ngFor="let tm of designationMeta.translationMaintenance">
+									<td>{{ tm.language }}</td>
+									<td><span class="vendor-badge">{{ tm.vendor }}</span></td>
+									<td class="compilations">{{ tm.compilations.join(', ') }}</td>
+								</tr>
+							</tbody>
+						</table>
 					</div>
-					<div class="meta-item">
-						<span class="meta-label">ID</span>
-						<span class="meta-value font-mono">{{ folderId }}</span>
+				</ng-container>
+
+				<!-- Standard Dated Version -->
+				<ng-container *ngIf="datedVersionMeta">
+					<div class="detail-grid">
+						<div class="detail-item span-2">
+							<span class="detail-label">Standard Title</span>
+							<span class="detail-value">{{ datedVersionMeta.standardTitle }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Action Type</span>
+							<span class="detail-value">{{ datedVersionMeta.actionType }}</span>
+						</div>
+						<div class="detail-item" *ngIf="datedVersionMeta.approvalDate">
+							<span class="detail-label">Approval Date</span>
+							<span class="detail-value">{{ datedVersionMeta.approvalDate }}</span>
+						</div>
+						<div class="detail-item" *ngIf="datedVersionMeta.publicationDate">
+							<span class="detail-label">Publication Date</span>
+							<span class="detail-value">{{ datedVersionMeta.publicationDate }}</span>
+						</div>
+						<div class="detail-item" *ngIf="datedVersionMeta.designationCollectionName">
+							<span class="detail-label">Designation Collection</span>
+							<span class="detail-value link" (click)="$event.stopPropagation(); navigateToCollection.emit(datedVersionMeta.designationCollectionId)">
+								{{ datedVersionMeta.designationCollectionName }}
+							</span>
+						</div>
 					</div>
-				</div>
-			</ng-container>
+				</ng-container>
+
+				<!-- Translation Batch -->
+				<ng-container *ngIf="batchMeta">
+					<div class="detail-grid">
+						<div class="detail-item">
+							<span class="detail-label">Batch ID</span>
+							<span class="detail-value mono">{{ batchMeta.batchId }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Vendor</span>
+							<span class="detail-value"><span class="vendor-badge">{{ batchMeta.vendor }}</span></span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Type</span>
+							<span class="detail-value">{{ batchMeta.type }}</span>
+						</div>
+						<div class="detail-item" *ngIf="batchMeta.dueDate">
+							<span class="detail-label">Due Date</span>
+							<span class="detail-value">{{ batchMeta.dueDate }}</span>
+						</div>
+						<div class="detail-item" *ngIf="batchMeta.assignedTo">
+							<span class="detail-label">Assigned To</span>
+							<span class="detail-value">{{ batchMeta.assignedTo }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Standards</span>
+							<span class="detail-value">{{ batchMeta.standardCount }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Days Elapsed</span>
+							<span class="detail-value">{{ batchMeta.daysElapsed }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Readiness</span>
+							<span class="detail-value">
+								<span class="readiness-badge" [ngClass]="'readiness-' + batchMeta.productionReadiness.toLowerCase().replace(' ', '-')">
+									{{ batchMeta.productionReadiness }}
+								</span>
+							</span>
+						</div>
+					</div>
+				</ng-container>
+
+				<!-- Default -->
+				<ng-container *ngIf="schema === 'default' || schema === 'StandardCollection'">
+					<div class="detail-grid">
+						<div class="detail-item">
+							<span class="detail-label">Name</span>
+							<span class="detail-value">{{ folderName }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">ID</span>
+							<span class="detail-value mono">{{ folderId }}</span>
+						</div>
+					</div>
+				</ng-container>
+			</div>
 		</div>
 	`,
 	styles: [`
-		:host { display: block; }
+		:host { display: block; font-family: var(--ott-font); }
+
 		.metadata-card {
-			background: var(--ott-bg-muted);
 			border: 1px solid var(--ott-border-light);
-			border-radius: var(--ott-radius-lg);
-			padding: 14px 16px;
-			font-family: var(--ott-font);
+			border-radius: var(--ott-radius-md);
+			background: var(--ott-bg);
+			overflow: hidden;
+			transition: border-color 0.15s;
 		}
-		.card-header {
+		.metadata-card:hover { border-color: var(--ott-border); }
+
+		/* Summary row — always visible */
+		.card-summary {
 			display: flex;
 			align-items: center;
-			gap: 8px;
-			margin-bottom: 12px;
+			justify-content: space-between;
+			padding: 10px 14px;
+			cursor: pointer;
+			user-select: none;
+			transition: background 0.12s;
 		}
-		.schema-label {
-			font-size: 13px;
-			font-weight: 600;
-			color: var(--ott-text);
-		}
-		.meta-grid {
-			display: grid;
-			grid-template-columns: 1fr 1fr;
-			gap: 8px 24px;
-		}
-		.meta-item {
-			display: flex;
-			flex-direction: column;
-			gap: 2px;
-		}
-		.meta-item.span-2 { grid-column: span 2; }
-		.meta-label {
-			font-size: 11px;
-			font-weight: 600;
-			text-transform: uppercase;
-			letter-spacing: 0.4px;
-			color: var(--ott-text-muted);
-		}
-		.meta-value {
-			font-size: 13px;
-			color: var(--ott-text);
+		.card-summary:hover { background: var(--ott-bg-muted); }
+		.summary-left {
 			display: flex;
 			align-items: center;
 			gap: 6px;
+			min-width: 0;
+			flex-wrap: wrap;
 		}
-		.meta-value.font-mono, .font-mono { font-family: var(--ott-font-mono); }
-		.meta-value.link {
+		.schema-badge {
+			font-size: 10px;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			padding: 2px 7px;
+			border-radius: var(--ott-radius-sm);
+			background: var(--ott-primary-light);
 			color: var(--ott-primary);
-			cursor: pointer;
+			white-space: nowrap;
 		}
-		.meta-value.link:hover { text-decoration: underline; }
-		.edit-inline-btn {
+		.summary-sep { color: var(--ott-border); font-size: 10px; }
+		.summary-text { font-size: 12px; color: var(--ott-text-secondary); white-space: nowrap; }
+		.summary-text.muted { color: var(--ott-text-muted); }
+		.lang-pills { display: flex; gap: 3px; }
+		.lang-pill {
+			font-size: 10px;
+			font-weight: 600;
+			font-family: var(--ott-font-mono);
+			padding: 1px 5px;
+			border-radius: var(--ott-radius-sm);
+			background: var(--ott-bg-subtle);
+			color: var(--ott-text-secondary);
+		}
+		.expand-btn {
 			border: none;
 			background: none;
 			cursor: pointer;
 			color: var(--ott-text-muted);
 			padding: 2px;
-			border-radius: var(--ott-radius-sm);
-			transition: color 0.15s, background 0.15s;
-			display: inline-flex;
+			display: flex;
+			transition: transform 0.2s, color 0.15s;
 		}
-		.edit-inline-btn:hover {
-			color: var(--ott-primary);
-			background: var(--ott-bg-hover);
-		}
+		.expand-btn:hover { color: var(--ott-text); }
+		.expand-btn.rotated { transform: rotate(180deg); }
 
-		/* Translation Maintenance */
-		.tm-section {
-			margin-top: 12px;
+		/* Detail panel */
+		.card-details {
+			padding: 0 14px 14px;
 			border-top: 1px solid var(--ott-border-light);
-			padding-top: 10px;
 		}
-		.tm-header {
-			font-size: 11px;
+		.detail-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 10px 24px;
+			padding-top: 12px;
+		}
+		.detail-item { display: flex; flex-direction: column; gap: 1px; }
+		.detail-item.span-2 { grid-column: span 2; }
+		.detail-label {
+			font-size: 10px;
 			font-weight: 600;
 			text-transform: uppercase;
 			letter-spacing: 0.4px;
 			color: var(--ott-text-muted);
-			margin-bottom: 6px;
+		}
+		.detail-value {
+			font-size: 13px;
+			color: var(--ott-text);
+			display: flex;
+			align-items: center;
+			gap: 5px;
+		}
+		.detail-value.mono, .mono { font-family: var(--ott-font-mono); }
+		.detail-value.link { color: var(--ott-primary); cursor: pointer; }
+		.detail-value.link:hover { text-decoration: underline; }
+		.edit-inline-btn {
+			border: none; background: none; cursor: pointer;
+			color: var(--ott-text-muted); padding: 1px;
+			border-radius: var(--ott-radius-sm);
+			display: inline-flex;
+			transition: color 0.15s;
+		}
+		.edit-inline-btn:hover { color: var(--ott-primary); }
+
+		/* Translation Maintenance — nested disclosure */
+		.tm-section { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--ott-border-light); }
+		.tm-toggle {
+			display: flex; align-items: center; gap: 5px;
+			border: none; background: none; cursor: pointer;
+			font-size: 11px; font-weight: 600; font-family: var(--ott-font);
+			text-transform: uppercase; letter-spacing: 0.3px;
+			color: var(--ott-text-muted); padding: 0;
+			transition: color 0.15s;
+		}
+		.tm-toggle:hover { color: var(--ott-text-secondary); }
+		.tm-count {
+			font-size: 10px; font-weight: 700;
+			min-width: 16px; height: 16px;
+			display: inline-flex; align-items: center; justify-content: center;
+			background: var(--ott-bg-subtle); border-radius: var(--ott-radius-full);
+			color: var(--ott-text-muted);
 		}
 		.tm-table {
-			width: 100%;
-			border-collapse: collapse;
-			font-size: 12px;
+			width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px;
 		}
 		.tm-table th {
-			text-align: left;
-			padding: 4px 8px;
-			font-weight: 600;
-			color: var(--ott-text-secondary);
-			border-bottom: 1px solid var(--ott-border-light);
+			text-align: left; padding: 4px 8px; font-weight: 600;
+			color: var(--ott-text-muted); font-size: 10px; text-transform: uppercase;
+			letter-spacing: 0.3px; border-bottom: 1px solid var(--ott-border-light);
 		}
 		.tm-table td {
-			padding: 5px 8px;
-			color: var(--ott-text);
+			padding: 5px 8px; color: var(--ott-text);
 			border-bottom: 1px solid var(--ott-border-light);
 		}
 		.tm-table tr:last-child td { border-bottom: none; }
 		.compilations {
-			font-size: 11px;
-			color: var(--ott-text-secondary);
-			max-width: 300px;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
+			font-size: 11px; color: var(--ott-text-muted);
+			max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 		}
 
 		/* Badges */
 		.vendor-badge {
-			display: inline-flex;
-			padding: 1px 6px;
-			border-radius: var(--ott-radius-sm);
-			font-size: 10px;
-			font-weight: 600;
-			letter-spacing: 0.3px;
-			background: var(--ott-primary-light);
-			color: var(--ott-primary);
+			display: inline-flex; padding: 1px 5px; border-radius: var(--ott-radius-sm);
+			font-size: 10px; font-weight: 600; letter-spacing: 0.2px;
+			background: var(--ott-primary-light); color: var(--ott-primary);
 		}
 		.readiness-badge {
-			display: inline-flex;
-			padding: 2px 8px;
-			border-radius: var(--ott-radius-full);
-			font-size: 11px;
-			font-weight: 600;
+			display: inline-flex; padding: 2px 7px; border-radius: var(--ott-radius-full);
+			font-size: 10px; font-weight: 600;
 		}
 		.readiness-ready { background: var(--ott-success-light); color: #166534; }
 		.readiness-not-ready { background: #fef2f2; color: #991b1b; }
@@ -290,6 +357,9 @@ export class FolderMetadataCardComponent {
 	@Input() folderId = '';
 	@Output() editReportNumber = new EventEmitter<void>();
 	@Output() navigateToCollection = new EventEmitter<string>();
+
+	expanded = false;
+	tmExpanded = false;
 
 	get schemaLabel(): string {
 		switch (this.schema) {

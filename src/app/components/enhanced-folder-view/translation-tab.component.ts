@@ -9,14 +9,15 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 	imports: [CommonModule, LucideIconComponent],
 	template: `
 		<div class="translation-tab">
-			<!-- Send to Translation section -->
+			<!-- Send to Translation — collapsible -->
 			<div class="section">
-				<div class="section-title">
-					<ott-icon name="zap" [size]="14" color="var(--ott-primary)"></ott-icon>
-					Send to Translation
-				</div>
+				<button class="section-toggle" (click)="sendExpanded = !sendExpanded">
+					<ott-icon [name]="sendExpanded ? 'chevron-down' : 'chevron-right'" [size]="13"></ott-icon>
+					<span class="section-title">Send to Translation</span>
+					<span class="section-badge" *ngIf="selectedItems.length > 0">{{ selectedItems.length }} selected</span>
+				</button>
 
-				<div class="project-picker">
+				<div class="section-body" *ngIf="sendExpanded">
 					<div class="picker-tabs">
 						<button class="picker-tab" [class.active]="projectMode === 'existing'" (click)="projectMode = 'existing'">
 							Existing Project
@@ -30,248 +31,183 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 						<label class="project-item" *ngFor="let proj of tmProjects"
 							[class.selected]="selectedProjectId === proj.id"
 							(click)="selectedProjectId = proj.id">
-							<input type="radio" name="project" [value]="proj.id"
-								[checked]="selectedProjectId === proj.id"
-								(change)="selectedProjectId = proj.id">
+							<input type="radio" name="project" [value]="proj.id" [checked]="selectedProjectId === proj.id">
 							<div class="project-info">
 								<span class="project-name">{{ proj.name }}</span>
 								<span class="project-meta">
-									{{ proj.locale }} &middot; {{ proj.itemCount }} item{{ proj.itemCount !== 1 ? 's' : '' }}
+									{{ proj.locale }} &middot; {{ proj.itemCount }} items
 									<span *ngIf="proj.dueDate"> &middot; Due {{ proj.dueDate }}</span>
 								</span>
 							</div>
 						</label>
-						<div class="empty-msg" *ngIf="tmProjects.length === 0">
-							No open Translation Manager projects.
-						</div>
+						<div class="empty-msg" *ngIf="tmProjects.length === 0">No open projects</div>
 					</div>
 
-					<div class="new-project-form" *ngIf="projectMode === 'new'">
-						<div class="form-hint">
-							A new Translation Manager project will be created when you add items.
-						</div>
+					<div class="new-hint" *ngIf="projectMode === 'new'">
+						A new TM project will be created when you add items.
+					</div>
+
+					<div class="send-footer">
+						<button class="btn-primary" [disabled]="!canSend">
+							<ott-icon name="send" [size]="13"></ott-icon>
+							Add to Project
+						</button>
 					</div>
 				</div>
+			</div>
 
-				<div class="send-actions">
-					<span class="selected-count" *ngIf="selectedItems.length > 0">
-						{{ selectedItems.length }} item{{ selectedItems.length !== 1 ? 's' : '' }} selected
-					</span>
-					<button class="btn btn-primary" [disabled]="!canSend">
-						<ott-icon name="send" [size]="14"></ott-icon>
-						Add to Translation Project
+			<!-- Translated Collections — collapsible -->
+			<div class="section">
+				<button class="section-toggle" (click)="collectionsExpanded = !collectionsExpanded">
+					<ott-icon [name]="collectionsExpanded ? 'chevron-down' : 'chevron-right'" [size]="13"></ott-icon>
+					<span class="section-title">Translated Collections</span>
+					<span class="section-count">{{ translatedCollections.length }}</span>
+				</button>
+
+				<div class="section-body" *ngIf="collectionsExpanded">
+					<div class="coll-list">
+						<div class="coll-row" *ngFor="let coll of translatedCollections.slice(0, visibleCollections); trackBy: trackById">
+							<span class="coll-name">{{ coll.name }}</span>
+							<span class="coll-status" [style.color]="getStatusColor(coll.lifecycleStatus)">
+								{{ coll.lifecycleStatus }}
+							</span>
+							<span class="coll-meta">{{ coll.vendor }}</span>
+							<span class="coll-meta">{{ coll.daysElapsed }}d</span>
+						</div>
+					</div>
+					<button class="show-more" *ngIf="translatedCollections.length > visibleCollections"
+						(click)="showMore()">
+						Show more ({{ translatedCollections.length - visibleCollections }} remaining)
 					</button>
 				</div>
 			</div>
 
-			<div class="divider"></div>
-
-			<!-- Translated Standard Collections -->
-			<div class="section">
-				<div class="section-title">
-					<ott-icon name="globe" [size]="14" color="var(--ott-primary)"></ott-icon>
-					Translated Standard Collections
-				</div>
-
-				<div class="collection-list">
-					<div class="collection-card" *ngFor="let coll of translatedCollections; trackBy: trackById">
-						<div class="coll-header">
-							<span class="coll-name font-mono">{{ coll.name }}</span>
-							<span class="status-badge" [style.background]="getStatusColor(coll.lifecycleStatus) + '20'"
-								[style.color]="getStatusColor(coll.lifecycleStatus)">
-								{{ coll.lifecycleStatus }}
-							</span>
-						</div>
-						<div class="coll-meta">
-							<span>Vendor: <strong>{{ coll.vendor }}</strong></span>
-							<span *ngIf="coll.batchName">Batch: <strong>{{ coll.batchName }}</strong></span>
-							<span>{{ coll.daysElapsed }} days</span>
-						</div>
-					</div>
-					<div class="empty-msg" *ngIf="translatedCollections.length === 0">
-						No translated collections found.
-					</div>
-				</div>
-			</div>
-
-			<!-- Action buttons -->
-			<div class="tab-actions">
-				<button class="btn btn-outline">
-					<ott-icon name="upload" [size]="14"></ott-icon>
+			<!-- Quick actions -->
+			<div class="quick-actions">
+				<button class="action-btn">
+					<ott-icon name="upload" [size]="13"></ott-icon>
 					Upload Source Files
 				</button>
-				<button class="btn btn-outline">
-					<ott-icon name="folder-plus" [size]="14"></ott-icon>
-					Add Translated Collection
+				<button class="action-btn">
+					<ott-icon name="folder-plus" [size]="13"></ott-icon>
+					Add Collection
 				</button>
 			</div>
 		</div>
 	`,
 	styles: [`
 		:host { display: block; font-family: var(--ott-font); }
-		.translation-tab { }
 
-		.section { margin-bottom: 16px; }
-		.section-title {
-			display: flex;
-			align-items: center;
-			gap: 6px;
-			font-size: 13px;
-			font-weight: 600;
-			color: var(--ott-text);
+		/* Sections */
+		.section {
+			border: 1px solid var(--ott-border-light);
+			border-radius: var(--ott-radius-md);
 			margin-bottom: 10px;
+			background: var(--ott-bg);
+			overflow: hidden;
+		}
+		.section-toggle {
+			display: flex; align-items: center; gap: 6px;
+			width: 100%; padding: 9px 12px; border: none; background: none;
+			cursor: pointer; font-size: 13px; font-family: var(--ott-font);
+			font-weight: 600; color: var(--ott-text); text-align: left;
+			transition: background 0.12s;
+		}
+		.section-toggle:hover { background: var(--ott-bg-muted); }
+		.section-title { flex: 1; }
+		.section-badge {
+			font-size: 10px; font-weight: 600; padding: 2px 7px;
+			border-radius: var(--ott-radius-full);
+			background: var(--ott-primary-light); color: var(--ott-primary);
+		}
+		.section-count {
+			font-size: 11px; font-weight: 600;
+			min-width: 20px; height: 20px;
+			display: inline-flex; align-items: center; justify-content: center;
+			background: var(--ott-bg-subtle); border-radius: var(--ott-radius-full);
+			color: var(--ott-text-muted);
+		}
+		.section-body {
+			border-top: 1px solid var(--ott-border-light);
+			padding: 10px 12px;
 		}
 
 		/* Project picker */
-		.project-picker {
-			border: 1px solid var(--ott-border-light);
-			border-radius: var(--ott-radius-md);
+		.picker-tabs {
+			display: flex; gap: 0; margin-bottom: 8px;
+			border: 1px solid var(--ott-border-light); border-radius: var(--ott-radius-sm);
 			overflow: hidden;
 		}
-		.picker-tabs {
-			display: flex;
-			background: var(--ott-bg-muted);
-			border-bottom: 1px solid var(--ott-border-light);
-		}
 		.picker-tab {
-			flex: 1;
-			padding: 8px 12px;
-			border: none;
-			background: none;
-			cursor: pointer;
-			font-size: 12px;
-			font-family: var(--ott-font);
-			font-weight: 500;
-			color: var(--ott-text-secondary);
-			transition: all 0.15s;
+			flex: 1; padding: 6px 10px; border: none; background: var(--ott-bg-muted);
+			cursor: pointer; font-size: 12px; font-family: var(--ott-font);
+			font-weight: 500; color: var(--ott-text-muted);
+			transition: all 0.12s;
 		}
-		.picker-tab.active {
-			color: var(--ott-primary);
-			background: var(--ott-bg);
-			box-shadow: inset 0 -2px 0 var(--ott-primary);
-		}
-		.picker-tab:hover:not(.active) { background: var(--ott-bg-hover); }
+		.picker-tab.active { background: var(--ott-bg); color: var(--ott-text); font-weight: 600; }
+		.picker-tab:not(:last-child) { border-right: 1px solid var(--ott-border-light); }
 
-		.project-list { max-height: 200px; overflow-y: auto; }
+		.project-list { max-height: 160px; overflow-y: auto; }
 		.project-item {
-			display: flex;
-			align-items: flex-start;
-			gap: 10px;
-			padding: 10px 14px;
-			cursor: pointer;
-			border-bottom: 1px solid var(--ott-border-light);
-			transition: background 0.12s;
+			display: flex; align-items: flex-start; gap: 8px;
+			padding: 8px 10px; cursor: pointer; border-radius: var(--ott-radius-sm);
+			transition: background 0.1s;
 		}
-		.project-item:last-child { border-bottom: none; }
 		.project-item:hover { background: var(--ott-bg-muted); }
 		.project-item.selected { background: var(--ott-bg-selected); }
 		.project-item input[type="radio"] { margin-top: 3px; }
-		.project-info { display: flex; flex-direction: column; gap: 2px; }
+		.project-info { display: flex; flex-direction: column; gap: 1px; }
 		.project-name { font-size: 13px; font-weight: 500; color: var(--ott-text); }
 		.project-meta { font-size: 11px; color: var(--ott-text-muted); }
+		.new-hint { font-size: 12px; color: var(--ott-text-muted); padding: 8px 0; }
+		.empty-msg { font-size: 12px; color: var(--ott-text-muted); padding: 12px 0; text-align: center; }
 
-		.new-project-form { padding: 14px; }
-		.form-hint { font-size: 12px; color: var(--ott-text-muted); }
+		.send-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
 
-		.send-actions {
-			display: flex;
-			align-items: center;
-			justify-content: flex-end;
-			gap: 10px;
-			margin-top: 10px;
+		/* Collections list */
+		.coll-list { display: flex; flex-direction: column; }
+		.coll-row {
+			display: grid; grid-template-columns: 1fr auto 50px 40px;
+			gap: 8px; align-items: center;
+			padding: 5px 0; font-size: 12px;
+			border-bottom: 1px solid var(--ott-border-light);
 		}
-		.selected-count {
-			font-size: 12px;
-			color: var(--ott-text-secondary);
-		}
-
-		/* Divider */
-		.divider {
-			border-top: 1px dashed var(--ott-border-light);
-			margin: 16px 0;
-		}
-
-		/* Collection list */
-		.collection-list { display: flex; flex-direction: column; gap: 6px; }
-		.collection-card {
-			border: 1px solid var(--ott-border-light);
-			border-radius: var(--ott-radius-md);
-			padding: 10px 14px;
-			transition: border-color 0.15s;
-		}
-		.collection-card:hover { border-color: var(--ott-border); }
-		.coll-header {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			margin-bottom: 4px;
-		}
+		.coll-row:last-child { border-bottom: none; }
 		.coll-name {
-			font-size: 13px;
-			font-weight: 600;
-			color: var(--ott-text);
+			font-family: var(--ott-font-mono); font-size: 11px;
+			color: var(--ott-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 		}
-		.font-mono { font-family: var(--ott-font-mono); }
-		.coll-meta {
-			display: flex;
-			gap: 12px;
-			font-size: 11px;
-			color: var(--ott-text-muted);
-		}
-		.coll-meta strong { color: var(--ott-text-secondary); }
+		.coll-status { font-size: 10px; font-weight: 600; white-space: nowrap; }
+		.coll-meta { font-size: 10px; color: var(--ott-text-muted); text-align: right; }
 
-		.status-badge {
-			display: inline-flex;
-			padding: 2px 8px;
-			border-radius: var(--ott-radius-full);
-			font-size: 10px;
-			font-weight: 600;
-			letter-spacing: 0.2px;
+		.show-more {
+			border: none; background: none; cursor: pointer; padding: 6px 0;
+			font-size: 11px; font-family: var(--ott-font); color: var(--ott-primary);
+			display: block; width: 100%; text-align: left;
 		}
+		.show-more:hover { text-decoration: underline; }
 
-		/* Actions */
-		.tab-actions {
-			display: flex;
-			gap: 8px;
-			margin-top: 16px;
+		/* Quick actions */
+		.quick-actions { display: flex; gap: 6px; margin-top: 4px; }
+		.action-btn {
+			display: inline-flex; align-items: center; gap: 4px;
+			padding: 6px 10px; border: 1px solid var(--ott-border-light);
+			border-radius: var(--ott-radius-md); background: var(--ott-bg);
+			cursor: pointer; font-size: 12px; font-family: var(--ott-font);
+			font-weight: 500; color: var(--ott-text-secondary); transition: all 0.12s;
 		}
+		.action-btn:hover { background: var(--ott-bg-muted); color: var(--ott-text); border-color: var(--ott-border); }
 
 		/* Buttons */
-		.btn {
-			display: inline-flex;
-			align-items: center;
-			gap: 6px;
-			padding: 7px 14px;
-			border-radius: var(--ott-radius-md);
-			font-size: 12px;
-			font-family: var(--ott-font);
-			font-weight: 500;
-			cursor: pointer;
-			border: 1px solid var(--ott-border);
-			transition: all 0.15s;
-		}
 		.btn-primary {
-			background: var(--ott-primary);
-			color: #fff;
-			border-color: var(--ott-primary);
+			display: inline-flex; align-items: center; gap: 5px;
+			padding: 6px 14px; border: none; border-radius: var(--ott-radius-md);
+			background: var(--ott-primary); color: #fff; cursor: pointer;
+			font-size: 12px; font-family: var(--ott-font); font-weight: 500;
+			transition: background 0.15s;
 		}
 		.btn-primary:hover { background: var(--ott-primary-hover); }
 		.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-		.btn-outline {
-			background: var(--ott-bg);
-			color: var(--ott-text-secondary);
-		}
-		.btn-outline:hover {
-			background: var(--ott-bg-hover);
-			color: var(--ott-text);
-		}
-
-		.empty-msg {
-			padding: 16px;
-			text-align: center;
-			font-size: 13px;
-			color: var(--ott-text-muted);
-		}
 	`]
 })
 export class TranslationTabComponent {
@@ -279,25 +215,22 @@ export class TranslationTabComponent {
 	@Input() tmProjects: TMProject[] = [];
 	@Input() selectedItems: FolderChildItem[] = [];
 
+	sendExpanded = false;
+	collectionsExpanded = true;
 	projectMode: 'existing' | 'new' = 'existing';
 	selectedProjectId: string | null = null;
+	visibleCollections = 10;
 
 	private statusColors: Record<string, string> = {
-		'In Quotation': '#94a3b8',
-		'In Translation': '#f59e0b',
-		'In QA': '#8b5cf6',
-		'In Editorial Review': '#3b82f6',
-		'Published to ML': '#22c55e',
-		'Published': '#059669'
+		'In Quotation': '#94a3b8', 'In Translation': '#f59e0b', 'In QA': '#8b5cf6',
+		'In Editorial Review': '#3b82f6', 'Published to ML': '#22c55e', 'Published': '#059669'
 	};
 
 	get canSend(): boolean {
 		return this.selectedItems.length > 0 && (this.selectedProjectId !== null || this.projectMode === 'new');
 	}
 
-	getStatusColor(status: string): string {
-		return this.statusColors[status] || '#94a3b8';
-	}
-
+	getStatusColor(status: string): string { return this.statusColors[status] || '#94a3b8'; }
 	trackById(_: number, item: TranslatedStandardCollection): string { return item.id; }
+	showMore(): void { this.visibleCollections += 20; }
 }

@@ -1,17 +1,10 @@
-import { Component, Input, OnChanges } from '@angular/core';
+import { Component, ElementRef, Input, OnChanges, OnDestroy, ViewChild, AfterViewInit, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideIconComponent } from '../shared/lucide-icon.component';
 import { HealthcheckStatusEntry, LIFECYCLE_STATUS_COLORS, LifecycleStatus } from '../../models/translation.model';
+import { Chart, DoughnutController, ArcElement, Tooltip, Legend } from 'chart.js';
 
-interface PieSlice {
-	status: LifecycleStatus;
-	color: string;
-	percentage: number;
-	count: number;
-	startAngle: number;
-	endAngle: number;
-	pathD: string;
-}
+Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 
 @Component({
 	selector: 'ott-healthcheck-tab',
@@ -21,106 +14,94 @@ interface PieSlice {
 		<div class="healthcheck-tab">
 			<!-- Header -->
 			<div class="hc-header">
-				<div class="hc-title">
-					<span class="hc-name">{{ batchName }}</span>
-					<span class="hc-timestamp">Last checked: {{ lastChecked }}</span>
+				<div>
+					<div class="hc-name">{{ batchName }}</div>
+					<div class="hc-timestamp">Last checked: {{ lastChecked }}</div>
 				</div>
 				<div class="hc-actions">
-					<button class="btn btn-outline" (click)="regenerate()">
-						<ott-icon name="refresh-cw" [size]="14"></ott-icon>
+					<button class="action-btn" (click)="regenerate()">
+						<ott-icon name="refresh-cw" [size]="13"></ott-icon>
 						Regenerate
 					</button>
-					<button class="btn btn-outline" (click)="print()">
-						<ott-icon name="file-text" [size]="14"></ott-icon>
+					<button class="action-btn" (click)="print()">
+						<ott-icon name="file-text" [size]="13"></ott-icon>
 						Print
 					</button>
 				</div>
 			</div>
 
-			<!-- Chart + Table row -->
+			<!-- Dashboard: chart + table -->
 			<div class="hc-dashboard">
-				<!-- Pie Chart -->
-				<div class="pie-container">
-					<div class="pie-title">Lifecycle Status Insight</div>
-					<svg viewBox="0 0 200 200" class="pie-chart">
-						<g *ngFor="let slice of pieSlices">
-							<path
-								[attr.d]="slice.pathD"
-								[attr.fill]="slice.color"
-								class="pie-slice"
-								(mouseenter)="hoveredSlice = slice"
-								(mouseleave)="hoveredSlice = null">
-							</path>
-						</g>
-						<!-- Center text -->
-						<text x="100" y="95" text-anchor="middle" class="pie-center-label">Total</text>
-						<text x="100" y="115" text-anchor="middle" class="pie-center-value">{{ totalCount }}</text>
-					</svg>
-					<div class="pie-legend">
-						<div class="legend-item" *ngFor="let slice of pieSlices">
-							<span class="legend-dot" [style.background]="slice.color"></span>
-							<span class="legend-label">{{ slice.status }}</span>
-							<span class="legend-count">{{ slice.count }} ({{ slice.percentage }}%)</span>
+				<!-- Chart -->
+				<div class="chart-card">
+					<div class="chart-wrap">
+						<canvas #chartCanvas></canvas>
+						<div class="chart-center">
+							<span class="center-value">{{ totalCount }}</span>
+							<span class="center-label">Total</span>
+						</div>
+					</div>
+					<div class="chart-legend">
+						<div class="legend-row" *ngFor="let entry of healthcheck">
+							<span class="legend-dot" [style.background]="getColor(entry.status)"></span>
+							<span class="legend-name">{{ entry.status }}</span>
+							<span class="legend-count">{{ entry.count }}</span>
 						</div>
 					</div>
 				</div>
 
-				<!-- Status Table -->
-				<div class="status-table-container">
+				<!-- Status table with inline expand -->
+				<div class="status-card">
 					<table class="status-table">
 						<thead>
 							<tr>
 								<th>Status</th>
-								<th class="align-right">Count</th>
-								<th class="align-right">%</th>
+								<th class="r">Count</th>
+								<th class="r">%</th>
 							</tr>
 						</thead>
 						<tbody>
-							<tr *ngFor="let entry of healthcheck"
-								[class.expandable]="entry.count > 0"
-								(click)="entry.count > 0 && toggleExpand(entry.status)">
-								<td>
-									<span class="expand-icon" *ngIf="entry.count > 0">
-										{{ expandedStatuses.has(entry.status) ? '&#9662;' : '&#9656;' }}
-									</span>
-									<span class="status-dot" [style.background]="getColor(entry.status)"></span>
-									{{ entry.status }}
-								</td>
-								<td class="align-right">{{ entry.count }}</td>
-								<td class="align-right">{{ entry.percentage }}%</td>
-							</tr>
+							<ng-container *ngFor="let entry of healthcheck">
+								<tr [class.expandable]="entry.count > 0"
+									[class.expanded]="expandedStatuses.has(entry.status)"
+									(click)="entry.count > 0 && toggleExpand(entry.status)">
+									<td>
+										<span class="status-dot" [style.background]="getColor(entry.status)"></span>
+										{{ entry.status }}
+										<ott-icon *ngIf="entry.count > 0"
+											[name]="expandedStatuses.has(entry.status) ? 'chevron-down' : 'chevron-right'"
+											[size]="12" color="var(--ott-text-muted)">
+										</ott-icon>
+									</td>
+									<td class="r">{{ entry.count }}</td>
+									<td class="r">{{ entry.percentage }}%</td>
+								</tr>
+								<!-- Inline expansion -->
+								<tr class="expand-row" *ngIf="expandedStatuses.has(entry.status) && entry.count > 0">
+									<td colspan="3">
+										<div class="expand-list">
+											<div class="expand-item" *ngFor="let item of entry.items.slice(0, maxExpanded)">
+												<span class="item-name">{{ item.name }}</span>
+												<span class="item-meta">{{ item.vendor }}</span>
+												<span class="item-meta">{{ item.daysElapsed }}d</span>
+											</div>
+											<button class="show-more" *ngIf="entry.count > maxExpanded"
+												(click)="$event.stopPropagation()">
+												+{{ entry.count - maxExpanded }} more
+											</button>
+										</div>
+									</td>
+								</tr>
+							</ng-container>
 						</tbody>
 						<tfoot>
 							<tr>
 								<td><strong>Total</strong></td>
-								<td class="align-right"><strong>{{ totalCount }}</strong></td>
-								<td class="align-right"><strong>100%</strong></td>
+								<td class="r"><strong>{{ totalCount }}</strong></td>
+								<td class="r"><strong>100%</strong></td>
 							</tr>
 						</tfoot>
 					</table>
-				</div>
-			</div>
-
-			<!-- Expanded item lists -->
-			<div class="expanded-sections">
-				<div *ngFor="let entry of healthcheck">
-					<div class="expanded-section" *ngIf="expandedStatuses.has(entry.status) && entry.count > 0">
-						<div class="expanded-header" (click)="toggleExpand(entry.status)">
-							<span class="expand-icon">&#9662;</span>
-							{{ entry.status }} ({{ entry.count }})
-						</div>
-						<div class="expanded-list">
-							<div class="expanded-item" *ngFor="let item of entry.items.slice(0, maxExpandedItems)">
-								<span class="item-name font-mono">{{ item.name }}</span>
-								<span class="item-vendor">{{ item.vendor }}</span>
-								<span class="item-due">{{ item.dueDate || '—' }}</span>
-								<span class="item-days">{{ item.daysElapsed }} days</span>
-							</div>
-							<div class="more-items" *ngIf="entry.count > maxExpandedItems">
-								+{{ entry.count - maxExpandedItems }} more
-							</div>
-						</div>
-					</div>
 				</div>
 			</div>
 		</div>
@@ -128,205 +109,146 @@ interface PieSlice {
 	styles: [`
 		:host { display: block; font-family: var(--ott-font); }
 
+		/* Header */
 		.hc-header {
-			display: flex;
-			align-items: flex-start;
-			justify-content: space-between;
-			margin-bottom: 16px;
+			display: flex; align-items: flex-start; justify-content: space-between;
+			margin-bottom: 14px;
 		}
-		.hc-name { font-size: 15px; font-weight: 600; color: var(--ott-text); }
-		.hc-timestamp {
-			display: block;
-			font-size: 12px;
-			color: var(--ott-text-muted);
-			margin-top: 2px;
+		.hc-name { font-size: 14px; font-weight: 600; color: var(--ott-text); }
+		.hc-timestamp { font-size: 11px; color: var(--ott-text-muted); margin-top: 1px; }
+		.hc-actions { display: flex; gap: 4px; }
+		.action-btn {
+			display: inline-flex; align-items: center; gap: 4px;
+			padding: 5px 10px; border: 1px solid var(--ott-border-light);
+			border-radius: var(--ott-radius-md); background: var(--ott-bg);
+			cursor: pointer; font-size: 12px; font-family: var(--ott-font);
+			font-weight: 500; color: var(--ott-text-secondary);
+			transition: all 0.12s;
 		}
-		.hc-actions { display: flex; gap: 6px; }
+		.action-btn:hover { background: var(--ott-bg-muted); color: var(--ott-text); border-color: var(--ott-border); }
 
-		/* Dashboard */
+		/* Dashboard grid */
 		.hc-dashboard {
 			display: grid;
-			grid-template-columns: 280px 1fr;
-			gap: 20px;
-			margin-bottom: 16px;
+			grid-template-columns: 240px 1fr;
+			gap: 14px;
 		}
 
-		/* Pie chart */
-		.pie-container {
-			background: var(--ott-bg-muted);
+		/* Chart card */
+		.chart-card {
 			border: 1px solid var(--ott-border-light);
-			border-radius: var(--ott-radius-lg);
-			padding: 14px;
+			border-radius: var(--ott-radius-md);
+			padding: 16px;
+			background: var(--ott-bg);
 		}
-		.pie-title {
-			font-size: 12px;
-			font-weight: 600;
-			color: var(--ott-text-secondary);
-			margin-bottom: 8px;
+		.chart-wrap {
+			position: relative;
+			width: 180px; height: 180px;
+			margin: 0 auto 14px;
 		}
-		.pie-chart {
-			width: 180px;
-			height: 180px;
-			display: block;
-			margin: 0 auto 12px;
+		.chart-wrap canvas { width: 100% !important; height: 100% !important; }
+		.chart-center {
+			position: absolute;
+			top: 50%; left: 50%;
+			transform: translate(-50%, -50%);
+			text-align: center;
+			pointer-events: none;
 		}
-		.pie-slice {
-			transition: opacity 0.15s;
-			cursor: pointer;
-		}
-		.pie-slice:hover { opacity: 0.8; }
-		.pie-center-label {
-			font-size: 11px;
-			fill: var(--ott-text-muted);
-			font-family: var(--ott-font);
-		}
-		.pie-center-value {
-			font-size: 18px;
-			font-weight: 700;
-			fill: var(--ott-text);
-			font-family: var(--ott-font);
-		}
-		.pie-legend { display: flex; flex-direction: column; gap: 4px; }
-		.legend-item {
-			display: flex;
-			align-items: center;
-			gap: 6px;
-			font-size: 11px;
-		}
-		.legend-dot {
-			width: 8px;
-			height: 8px;
-			border-radius: 50%;
-			flex-shrink: 0;
-		}
-		.legend-label { flex: 1; color: var(--ott-text-secondary); }
-		.legend-count { color: var(--ott-text-muted); font-family: var(--ott-font-mono); font-size: 10px; }
+		.center-value { display: block; font-size: 22px; font-weight: 700; color: var(--ott-text); line-height: 1; }
+		.center-label { display: block; font-size: 10px; color: var(--ott-text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-		/* Status table */
-		.status-table-container {
+		/* Legend */
+		.chart-legend { display: flex; flex-direction: column; gap: 3px; }
+		.legend-row {
+			display: flex; align-items: center; gap: 6px;
+			font-size: 11px; color: var(--ott-text-secondary);
+		}
+		.legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+		.legend-name { flex: 1; }
+		.legend-count { font-family: var(--ott-font-mono); font-size: 10px; color: var(--ott-text-muted); }
+
+		/* Status table card */
+		.status-card {
 			border: 1px solid var(--ott-border-light);
-			border-radius: var(--ott-radius-lg);
+			border-radius: var(--ott-radius-md);
 			overflow: hidden;
+			background: var(--ott-bg);
 		}
-		.status-table {
-			width: 100%;
-			border-collapse: collapse;
-			font-size: 13px;
-		}
+		.status-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 		.status-table th {
-			text-align: left;
-			padding: 8px 12px;
-			font-size: 11px;
-			font-weight: 600;
-			text-transform: uppercase;
-			letter-spacing: 0.3px;
-			color: var(--ott-text-muted);
-			background: var(--ott-bg-muted);
-			border-bottom: 1px solid var(--ott-border-light);
+			text-align: left; padding: 8px 12px; font-size: 10px; font-weight: 600;
+			text-transform: uppercase; letter-spacing: 0.3px; color: var(--ott-text-muted);
+			background: var(--ott-bg-muted); border-bottom: 1px solid var(--ott-border-light);
 		}
 		.status-table td {
-			padding: 8px 12px;
-			color: var(--ott-text);
+			padding: 7px 12px; color: var(--ott-text);
 			border-bottom: 1px solid var(--ott-border-light);
 		}
+		.status-table .r { text-align: right; }
 		.status-table tr.expandable { cursor: pointer; }
-		.status-table tr.expandable:hover { background: var(--ott-bg-hover); }
-		.status-table tfoot td {
-			background: var(--ott-bg-muted);
-			border-bottom: none;
-		}
-		.align-right { text-align: right; }
+		.status-table tr.expandable:hover { background: var(--ott-bg-muted); }
+		.status-table tr.expanded { background: var(--ott-bg-muted); }
+		.status-table tfoot td { background: var(--ott-bg-muted); border-bottom: none; }
 		.status-dot {
-			display: inline-block;
-			width: 8px;
-			height: 8px;
-			border-radius: 50%;
-			margin-right: 6px;
-		}
-		.expand-icon {
-			display: inline-block;
-			width: 14px;
-			font-size: 10px;
-			color: var(--ott-text-muted);
+			display: inline-block; width: 7px; height: 7px;
+			border-radius: 50%; margin-right: 6px; vertical-align: middle;
 		}
 
-		/* Expanded sections */
-		.expanded-sections { display: flex; flex-direction: column; gap: 8px; }
-		.expanded-section {
-			border: 1px solid var(--ott-border-light);
-			border-radius: var(--ott-radius-md);
-			overflow: hidden;
-		}
-		.expanded-header {
-			padding: 8px 12px;
-			font-size: 13px;
-			font-weight: 600;
-			color: var(--ott-text-secondary);
+		/* Expand rows */
+		.expand-row td {
+			padding: 0 12px 8px;
 			background: var(--ott-bg-muted);
-			cursor: pointer;
-			user-select: none;
 		}
-		.expanded-header:hover { background: var(--ott-bg-hover); }
-		.expanded-list { }
-		.expanded-item {
-			display: grid;
-			grid-template-columns: 1fr 60px 80px 70px;
-			gap: 8px;
-			padding: 6px 12px;
-			font-size: 12px;
-			border-bottom: 1px solid var(--ott-border-light);
-			color: var(--ott-text);
+		.expand-list {
+			display: flex; flex-direction: column; gap: 2px;
+			padding: 4px 0 0 13px;
 		}
-		.expanded-item:last-child { border-bottom: none; }
-		.font-mono { font-family: var(--ott-font-mono); }
-		.item-vendor, .item-due, .item-days { color: var(--ott-text-muted); }
-		.more-items {
-			padding: 6px 12px;
-			font-size: 12px;
-			color: var(--ott-primary);
-			cursor: pointer;
+		.expand-item {
+			display: flex; align-items: center; gap: 10px;
+			font-size: 11px; color: var(--ott-text-secondary);
+			padding: 3px 0;
 		}
-
-		/* Buttons */
-		.btn {
-			display: inline-flex;
-			align-items: center;
-			gap: 6px;
-			padding: 6px 12px;
-			border-radius: var(--ott-radius-md);
-			font-size: 12px;
-			font-family: var(--ott-font);
-			font-weight: 500;
-			cursor: pointer;
-			border: 1px solid var(--ott-border);
-			transition: all 0.15s;
+		.item-name {
+			flex: 1; font-family: var(--ott-font-mono);
+			font-size: 11px; color: var(--ott-text);
+			overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 		}
-		.btn-outline {
-			background: var(--ott-bg);
-			color: var(--ott-text-secondary);
+		.item-meta { font-size: 10px; color: var(--ott-text-muted); white-space: nowrap; }
+		.show-more {
+			border: none; background: none; cursor: pointer; padding: 2px 0;
+			font-size: 11px; font-family: var(--ott-font); color: var(--ott-primary);
+			text-align: left;
 		}
-		.btn-outline:hover {
-			background: var(--ott-bg-hover);
-			color: var(--ott-text);
-		}
+		.show-more:hover { text-decoration: underline; }
 	`]
 })
-export class HealthcheckTabComponent implements OnChanges {
+export class HealthcheckTabComponent implements OnChanges, AfterViewInit, OnDestroy {
 	@Input() healthcheck: HealthcheckStatusEntry[] = [];
 	@Input() batchName = '';
+	@ViewChild('chartCanvas') chartCanvas!: ElementRef<HTMLCanvasElement>;
 
-	pieSlices: PieSlice[] = [];
 	expandedStatuses = new Set<LifecycleStatus>();
-	hoveredSlice: PieSlice | null = null;
-	maxExpandedItems = 20;
+	maxExpanded = 8;
 	lastChecked = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+
+	private chart: Chart | null = null;
 
 	get totalCount(): number {
 		return this.healthcheck.reduce((sum, e) => sum + e.count, 0);
 	}
 
-	ngOnChanges(): void {
-		this.buildPieSlices();
+	ngAfterViewInit(): void {
+		this.createChart();
+	}
+
+	ngOnChanges(changes: SimpleChanges): void {
+		if (changes['healthcheck'] && this.chart) {
+			this.updateChart();
+		}
+	}
+
+	ngOnDestroy(): void {
+		this.chart?.destroy();
 	}
 
 	getColor(status: LifecycleStatus): string {
@@ -334,74 +256,76 @@ export class HealthcheckTabComponent implements OnChanges {
 	}
 
 	toggleExpand(status: LifecycleStatus): void {
-		if (this.expandedStatuses.has(status)) {
-			this.expandedStatuses.delete(status);
-		} else {
-			this.expandedStatuses.add(status);
-		}
+		if (this.expandedStatuses.has(status)) this.expandedStatuses.delete(status);
+		else this.expandedStatuses.add(status);
 	}
 
 	regenerate(): void {
 		this.lastChecked = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
-		console.log('[IGX-OTT] Healthcheck regenerated');
 	}
 
-	print(): void {
-		window.print();
+	print(): void { window.print(); }
+
+	private createChart(): void {
+		if (!this.chartCanvas?.nativeElement) return;
+
+		const entries = this.healthcheck.filter(e => e.count > 0);
+
+		this.chart = new Chart(this.chartCanvas.nativeElement, {
+			type: 'doughnut',
+			data: {
+				labels: entries.map(e => e.status),
+				datasets: [{
+					data: entries.map(e => e.count),
+					backgroundColor: entries.map(e => this.getColor(e.status)),
+					borderWidth: 2,
+					borderColor: '#ffffff',
+					hoverBorderColor: '#ffffff',
+					hoverBorderWidth: 3,
+					borderRadius: 3,
+					spacing: 1
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: true,
+				cutout: '68%',
+				plugins: {
+					legend: { display: false },
+					tooltip: {
+						backgroundColor: 'rgba(0,0,0,0.8)',
+						titleFont: { family: "'Geist', sans-serif", size: 12, weight: '600' as any },
+						bodyFont: { family: "'Geist', sans-serif", size: 11 },
+						padding: 8,
+						cornerRadius: 6,
+						displayColors: true,
+						boxWidth: 8,
+						boxHeight: 8,
+						boxPadding: 4,
+						callbacks: {
+							label: (ctx) => {
+								const total = ctx.dataset.data.reduce((a: number, b: any) => a + (b as number), 0);
+								const pct = total > 0 ? Math.round(((ctx.parsed as number) / total) * 100) : 0;
+								return ` ${ctx.parsed} items (${pct}%)`;
+							}
+						}
+					}
+				},
+				animation: {
+					animateRotate: true,
+					duration: 600
+				}
+			}
+		});
 	}
 
-	private buildPieSlices(): void {
-		const total = this.totalCount;
-		if (total === 0) {
-			this.pieSlices = [];
-			return;
-		}
+	private updateChart(): void {
+		if (!this.chart) { this.createChart(); return; }
 
-		const slices: PieSlice[] = [];
-		let currentAngle = -90; // Start from top
-
-		for (const entry of this.healthcheck) {
-			if (entry.count === 0) continue;
-
-			const percentage = entry.percentage;
-			const sliceAngle = (percentage / 100) * 360;
-			const startAngle = currentAngle;
-			const endAngle = currentAngle + sliceAngle;
-
-			slices.push({
-				status: entry.status,
-				color: this.getColor(entry.status),
-				percentage,
-				count: entry.count,
-				startAngle,
-				endAngle,
-				pathD: this.describeArc(100, 100, 70, startAngle, endAngle)
-			});
-
-			currentAngle = endAngle;
-		}
-
-		this.pieSlices = slices;
-	}
-
-	private describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
-		const start = this.polarToCartesian(cx, cy, r, endAngle);
-		const end = this.polarToCartesian(cx, cy, r, startAngle);
-		const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
-
-		return [
-			'M', cx, cy,
-			'L', start.x, start.y,
-			'A', r, r, 0, largeArcFlag, 0, end.x, end.y,
-			'Z'
-		].join(' ');
-	}
-
-	private polarToCartesian(cx: number, cy: number, r: number, angleDeg: number): { x: number; y: number } {
-		const angleRad = (angleDeg * Math.PI) / 180;
-		return {
-			x: cx + r * Math.cos(angleRad),
-			y: cy + r * Math.sin(angleRad)
-		};
+		const entries = this.healthcheck.filter(e => e.count > 0);
+		this.chart.data.labels = entries.map(e => e.status);
+		this.chart.data.datasets[0].data = entries.map(e => e.count);
+		this.chart.data.datasets[0].backgroundColor = entries.map(e => this.getColor(e.status));
+		this.chart.update('active');
 	}
 }

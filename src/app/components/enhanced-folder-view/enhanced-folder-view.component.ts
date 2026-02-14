@@ -30,19 +30,19 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 	],
 	template: `
 		<div class="efv" *ngIf="viewData">
-			<!-- Header: title + ID -->
-			<div class="efv-header">
-				<span class="efv-title">{{ context?.name || 'Folder' }}</span>
-				<span class="efv-id">({{ context?.id }})</span>
-			</div>
-
 			<!-- Breadcrumbs -->
 			<ott-folder-breadcrumb
 				[breadcrumbs]="viewData.breadcrumbs"
 				(navigate)="onBreadcrumbNav($event)">
 			</ott-folder-breadcrumb>
 
-			<!-- Metadata Card -->
+			<!-- Header row: title + ID -->
+			<div class="efv-header">
+				<h2 class="efv-title">{{ context?.name || 'Folder' }}</h2>
+				<span class="efv-id">{{ context?.id }}</span>
+			</div>
+
+			<!-- Metadata Card (collapsed by default) -->
 			<ott-folder-metadata-card
 				[schema]="viewData.schema"
 				[metadata]="viewData.metadata"
@@ -53,27 +53,27 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			</ott-folder-metadata-card>
 
 			<!-- Inline Report Number Editor -->
-			<ott-report-number-inline
-				*ngIf="showReportNumberEdit"
-				[currentNumber]="getReportNumber()"
-				(saved)="onReportNumberSaved($event)">
-			</ott-report-number-inline>
+			<div class="report-edit-area" *ngIf="showReportNumberEdit">
+				<ott-report-number-inline
+					[currentNumber]="getReportNumber()"
+					(saved)="onReportNumberSaved($event)">
+				</ott-report-number-inline>
+			</div>
 
 			<!-- Tab Bar -->
-			<div class="efv-tabs">
+			<nav class="efv-tabs">
 				<button
 					*ngFor="let tab of viewData.tabs"
 					class="efv-tab"
 					[class.active]="activeTab === tab.id"
 					(click)="activeTab = tab.id">
-					<ott-icon [name]="tab.icon" [size]="14"></ott-icon>
 					{{ tab.label }}
+					<span class="tab-badge" *ngIf="getTabCount(tab.id) as count">{{ count }}</span>
 				</button>
-			</div>
+			</nav>
 
 			<!-- Tab Content -->
 			<div class="efv-tab-content">
-				<!-- Contents Tab -->
 				<ott-folder-contents-tab
 					*ngIf="activeTab === 'contents'"
 					[items]="viewData.children"
@@ -81,7 +81,6 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 					(selectionChange)="onSelectionChange($event)">
 				</ott-folder-contents-tab>
 
-				<!-- Translation Tab -->
 				<ott-translation-tab
 					*ngIf="activeTab === 'translation'"
 					[translatedCollections]="viewData.translatedCollections"
@@ -89,31 +88,24 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 					[selectedItems]="selectedItems">
 				</ott-translation-tab>
 
-				<!-- Kanban Tab -->
 				<ott-kanban-tab
 					*ngIf="activeTab === 'kanban'"
 					[collections]="viewData.translatedCollections"
 					(statusChange)="onStatusChange($event)">
 				</ott-kanban-tab>
 
-				<!-- Healthcheck Tab -->
 				<ott-healthcheck-tab
 					*ngIf="activeTab === 'healthcheck'"
 					[healthcheck]="viewData.healthcheck"
 					[batchName]="getBatchName()">
 				</ott-healthcheck-tab>
 
-				<!-- Properties Tab (placeholder) -->
-				<div *ngIf="activeTab === 'properties'" class="properties-placeholder">
-					<div class="placeholder-content">
-						<ott-icon name="settings" [size]="24" color="var(--ott-text-muted)"></ott-icon>
-						<p>Native CMS Properties panel renders here.</p>
-						<p class="placeholder-sub">In production, this embeds the existing Properties tab from the CMS.</p>
-					</div>
+				<div *ngIf="activeTab === 'properties'" class="placeholder-tab">
+					<ott-icon name="settings" [size]="20" color="var(--ott-text-muted)"></ott-icon>
+					<p>Native CMS Properties panel</p>
 				</div>
 
-				<!-- Report Number Tab -->
-				<div *ngIf="activeTab === 'report-number'" class="report-number-tab">
+				<div *ngIf="activeTab === 'report-number'" class="inline-edit-tab">
 					<ott-report-number-inline
 						[currentNumber]="getReportNumber()"
 						(saved)="onReportNumberSaved($event)">
@@ -124,8 +116,9 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 	`,
 	styles: [`
 		:host { display: block; font-family: var(--ott-font); }
+
 		.efv {
-			padding: 16px 20px;
+			padding: 12px 20px 20px;
 			max-width: 100%;
 		}
 
@@ -134,78 +127,92 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			display: flex;
 			align-items: baseline;
 			gap: 8px;
-			margin-bottom: 4px;
+			margin: 2px 0 10px;
 		}
 		.efv-title {
-			font-size: 16px;
+			margin: 0;
+			font-size: 18px;
 			font-weight: 700;
 			color: var(--ott-text);
+			letter-spacing: -0.01em;
 		}
 		.efv-id {
-			font-size: 12px;
+			font-size: 11px;
 			color: var(--ott-text-muted);
 			font-family: var(--ott-font-mono);
 		}
 
-		/* Tabs */
+		/* Report edit area */
+		.report-edit-area {
+			margin-top: 8px;
+			padding: 10px 14px;
+			border: 1px solid var(--ott-border-light);
+			border-radius: var(--ott-radius-md);
+			background: var(--ott-bg);
+		}
+
+		/* Tab bar */
 		.efv-tabs {
 			display: flex;
 			gap: 0;
-			border-bottom: 2px solid var(--ott-border-light);
 			margin-top: 16px;
+			border-bottom: 1px solid var(--ott-border-light);
 		}
 		.efv-tab {
 			display: inline-flex;
 			align-items: center;
-			gap: 6px;
-			padding: 9px 16px;
+			gap: 5px;
+			padding: 8px 14px;
 			border: none;
 			background: none;
 			cursor: pointer;
 			font-size: 13px;
 			font-family: var(--ott-font);
 			font-weight: 500;
-			color: var(--ott-text-secondary);
+			color: var(--ott-text-muted);
 			border-bottom: 2px solid transparent;
-			margin-bottom: -2px;
+			margin-bottom: -1px;
 			transition: color 0.15s, border-color 0.15s;
 			white-space: nowrap;
 		}
-		.efv-tab:hover {
-			color: var(--ott-text);
-		}
+		.efv-tab:hover { color: var(--ott-text-secondary); }
 		.efv-tab.active {
-			color: var(--ott-primary);
+			color: var(--ott-text);
 			border-bottom-color: var(--ott-primary);
+		}
+		.tab-badge {
+			font-size: 10px;
 			font-weight: 600;
+			min-width: 18px;
+			height: 18px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			background: var(--ott-bg-subtle);
+			color: var(--ott-text-muted);
+			border-radius: var(--ott-radius-full);
+			padding: 0 4px;
+		}
+		.efv-tab.active .tab-badge {
+			background: var(--ott-primary-light);
+			color: var(--ott-primary);
 		}
 
 		/* Tab content */
-		.efv-tab-content {
-			padding-top: 12px;
-		}
+		.efv-tab-content { padding-top: 14px; }
 
-		/* Properties placeholder */
-		.properties-placeholder {
+		/* Placeholders */
+		.placeholder-tab {
 			display: flex;
-			justify-content: center;
+			flex-direction: column;
+			align-items: center;
+			gap: 6px;
 			padding: 40px 0;
-		}
-		.placeholder-content {
-			text-align: center;
 			color: var(--ott-text-muted);
-		}
-		.placeholder-content p {
-			margin: 8px 0 0;
 			font-size: 13px;
 		}
-		.placeholder-sub { font-size: 12px; }
-
-		/* Report number tab */
-		.report-number-tab {
-			padding: 16px 0;
-			max-width: 400px;
-		}
+		.placeholder-tab p { margin: 0; }
+		.inline-edit-tab { max-width: 400px; padding: 12px 0; }
 	`]
 })
 export class EnhancedFolderViewComponent extends ComponentBase implements OnInit, OnDestroy {
@@ -224,7 +231,6 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 	}
 
 	ngOnInit(): void {
-		// Subscribe to view data changes
 		this.observableSubTeardowns.push(
 			this.folderViewService.viewData$.subscribe(data => {
 				this.viewData = data;
@@ -234,7 +240,6 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 			})
 		);
 
-		// Load data
 		if (this.context) {
 			this.folderViewService.loadFolderView(this.context);
 		}
@@ -244,15 +249,22 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 		this.cleanup();
 	}
 
+	getTabCount(tabId: string): number | null {
+		if (!this.viewData) return null;
+		switch (tabId) {
+			case 'contents': return this.viewData.children.length || null;
+			case 'translation': return this.viewData.translatedCollections.length || null;
+			case 'kanban': return this.viewData.translatedCollections.length || null;
+			default: return null;
+		}
+	}
+
 	onBreadcrumbNav(segment: BreadcrumbSegment): void {
 		console.log(`[IGX-OTT] Navigate to: ${segment.name} (${segment.id})`);
-		// In production, this would navigate the CMS router
 	}
 
 	onNavigateToCollection(id: string | undefined): void {
-		if (id) {
-			console.log(`[IGX-OTT] Navigate to collection: ${id}`);
-		}
+		if (id) console.log(`[IGX-OTT] Navigate to collection: ${id}`);
 	}
 
 	onItemOpen(item: FolderChildItem): void {
@@ -265,9 +277,7 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 
 	onStatusChange(event: { itemId: string; newStatus: string }): void {
 		this.folderViewService.updateLifecycleStatus(event.itemId, event.newStatus as any).subscribe(ok => {
-			if (ok) {
-				this.notify.success(`Status updated to ${event.newStatus}`);
-			}
+			if (ok) this.notify.success(`Status updated`);
 		});
 	}
 
