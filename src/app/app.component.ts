@@ -98,11 +98,13 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 			);
 		}
 
-		// In CMS mode: inject Enhanced Folder View when context changes to a folder
+		// In CMS mode: inject Enhanced Folder View when context changes to a folder.
+		// Poll for <folder-view> to exist in the CMS DOM before injecting,
+		// since the CMS renders it asynchronously after navigation.
 		this.observableSubTeardowns.push(
 			this.assetContextService.context$.subscribe(ctx => {
 				if (ctx?.isFolder) {
-					setTimeout(() => this.mainComponentService.injectEnhancedFolderView(), 200);
+					this.waitForFolderViewThenInject();
 				}
 			})
 		);
@@ -128,6 +130,28 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 			// Create the Zap icon button in the CMS left sidebar (2nd position, after Asset Tree)
 			this.mainComponentService.createUtilButton();
 		}, 300);
+	}
+
+	/**
+	 * Polls for the CMS <folder-view> element to appear, then injects the enhanced view.
+	 * Retries every 150ms up to 3 seconds to handle variable CMS render timing.
+	 */
+	private waitForFolderViewThenInject(elapsed = 0): void {
+		const maxWait = 3000;
+		const interval = 150;
+		const topWindow = window.top as any;
+		const folderView = topWindow?.document?.querySelector('folder-view');
+
+		if (folderView) {
+			this.mainComponentService.injectEnhancedFolderView();
+			return;
+		}
+
+		if (elapsed < maxWait) {
+			setTimeout(() => this.waitForFolderViewThenInject(elapsed + interval), interval);
+		} else {
+			console.warn('[IGX-OTT] Timed out waiting for CMS <folder-view> to render');
+		}
 	}
 
 	/** Dev mode: handle action clicks */
