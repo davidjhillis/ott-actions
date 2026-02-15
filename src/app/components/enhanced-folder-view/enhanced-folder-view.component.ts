@@ -1,10 +1,11 @@
-import { Component, Input, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ComponentBase } from '../../ComponentBase';
 import { AssetContext } from '../../models/asset-context.model';
 import { FolderViewService, FolderViewData, BreadcrumbSegment } from '../../services/folder-view.service';
 import { ActionExecutorService } from '../../services/action-executor.service';
 import { FolderSchema, FolderTab, FolderChildItem } from '../../models/translation.model';
+import { ElementUpdate } from '../../services/metadata-lookup.service';
 import { NotificationService } from '../../services/notification.service';
 import { FolderBreadcrumbComponent } from './folder-breadcrumb.component';
 import { FolderMetadataCardComponent } from './folder-metadata-card.component';
@@ -45,13 +46,16 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 
 			<!-- Metadata Card (collapsed by default) -->
 			<ott-folder-metadata-card
+				#metadataCard
 				[schema]="viewData.schema"
 				[metadata]="viewData.metadata"
 				[folderName]="context?.name || ''"
 				[folderId]="context?.id || ''"
 				[pageFields]="viewData.pageFields"
+				[metadataPageId]="context?.metadataPageId"
 				(editReportNumber)="showReportNumberEdit = true"
-				(navigateToCollection)="onNavigateToCollection($event)">
+				(navigateToCollection)="onNavigateToCollection($event)"
+				(metadataSave)="onMetadataSave($event)">
 			</ott-folder-metadata-card>
 
 			<!-- Inline Report Number Editor -->
@@ -222,6 +226,7 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 })
 export class EnhancedFolderViewComponent extends ComponentBase implements OnInit, OnDestroy {
 	@Input() context?: AssetContext;
+	@ViewChild('metadataCard') metadataCard?: FolderMetadataCardComponent;
 
 	viewData: FolderViewData | null = null;
 	activeTab = 'contents';
@@ -361,6 +366,17 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 			enabled: true,
 			groupId: 'translation',
 			order: 0
+		});
+	}
+
+	onMetadataSave(event: { pageId: string; elements: ElementUpdate[] }): void {
+		this.folderViewService.saveMetadataElements(event.pageId, event.elements).subscribe(ok => {
+			if (ok) {
+				this.notify.success('Metadata saved');
+			} else {
+				this.notify.error('Failed to save metadata');
+			}
+			this.metadataCard?.onSaveComplete(ok);
 		});
 	}
 

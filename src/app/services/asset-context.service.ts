@@ -2,6 +2,7 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { BehaviorSubject, Subscription } from 'rxjs';
 import { AssetContext } from '../models/asset-context.model';
 import { CMSCommunicationsService } from './cms-communications.service';
+import { MetadataLookupService } from './metadata-lookup.service';
 
 /**
  * Tracks the current CMS asset/folder context by listening to
@@ -19,15 +20,22 @@ export class AssetContextService implements OnDestroy {
 	private routerSub?: Subscription;
 	private currentXid?: string;
 
-	constructor(private cms: CMSCommunicationsService) {
+	constructor(
+		private cms: CMSCommunicationsService,
+		private metadataLookup: MetadataLookupService
+	) {
 		if (this.cms.isDevMode) {
 			// Emit demo context: Designation Collection for ASTM translation workflow
+			// Enrich with metadata lookup for demo
+			const demoMeta = this.metadataLookup.lookupByFolderName('E0008_E0008M');
 			this.contextSubject.next({
 				id: 'af/7',
 				name: 'E0008_E0008M',
 				isFolder: true,
 				path: '/Standards Documents/E0008_E0008M',
-				schema: 'DesignationCollection',
+				schema: 'Folder',
+				folderType: demoMeta?.schema || 'DesignationCollection',
+				metadataPageId: demoMeta?.pageId,
 				workflowStatus: 'In Review',
 				selectedItems: [
 					{ id: 'af/12', name: 'E0008_E0008M-16AE01: Standard Test Methods...', isFolder: true, schema: 'StandardCollection' },
@@ -38,7 +46,11 @@ export class AssetContextService implements OnDestroy {
 				]
 			});
 		} else {
-			this.subscribeToRouter();
+			// Load metadata index before subscribing to router
+			this.metadataLookup.loadMetadataIndex().subscribe({
+				next: () => this.subscribeToRouter(),
+				error: () => this.subscribeToRouter() // still subscribe even if index fails
+			});
 		}
 	}
 
@@ -202,13 +214,13 @@ export class AssetContextService implements OnDestroy {
 	/**
 	 * Attempt to read folder metadata from NG_REF.currentContent.Model.
 	 * Retries up to 1.5s (10 x 150ms) to handle CMS render timing.
+	 * After basic context is set, fetches page data to read FolderType element.
 	 */
 	private tryResolveAssetFolder(apiId: string, urlId: string, attempt: number): void {
 		const model = (window.top as any)?.NG_REF?.currentContent?.Model?._value;
 		const schema = model?.SchemaName;
 
 		if (schema) {
-			// Model populated — use it
 			const ctx: AssetContext = {
 				id: apiId,
 				name: model.Name || urlId,
@@ -219,21 +231,82 @@ export class AssetContextService implements OnDestroy {
 			};
 			this.contextSubject.next(ctx);
 			console.log(`[IGX-OTT] Asset folder context: ${ctx.name} (${apiId}), schema: ${schema}`);
+
+			// Now fetch page data to read the FolderType element
+			this.fetchFolderType(apiId, ctx);
 		} else if (attempt < 10) {
-			// Model not ready yet — retry after short delay
 			setTimeout(() => this.tryResolveAssetFolder(apiId, urlId, attempt + 1), 150);
 		} else {
-			// Gave up waiting — emit with unknown schema, let gating decide
 			console.warn(`[IGX-OTT] Model.SchemaName not available after retries for ${apiId}`);
 			const name = model?.Name || urlId;
-			this.contextSubject.next({
+			const ctx: AssetContext = {
 				id: apiId,
 				name,
 				isFolder: true,
 				path: '',
 				schema: 'Folder',
 				parentId: model?.ParentId || undefined,
+			};
+			this.contextSubject.next(ctx);
+
+			// Still try to fetch FolderType
+			this.fetchFolderType(apiId, ctx);
+		}
+	}
+
+	/**
+	 * Fetch folder page data to read the FolderType element.
+	 * If FolderType has a value, update the context — this triggers
+	 * the enhanced folder view injection in AppComponent.
+	 *
+	 * Falls back to site tree metadata lookup if no FolderType element found.
+	 */
+	private fetchFolderType(folderId: string, ctx: AssetContext): void {
+		this.cms.callService<any>({
+			service: 'PageCommandsServices',
+			action: 'GetPageData',
+			args: [folderId, ''],
+			timeout: 5000
+		}).subscribe({
+			next: (pageData) => {
+				const elements = pageData?.Elements || pageData?.elements || {};
+				const folderType = elements['FolderType']?.Value
+					|| elements['FolderType']?.value
+					|| elements['FolderType']
+					|| '';
+
+				if (folderType) {
+					console.log(`[IGX-OTT] FolderType: ${folderType} for ${folderId}`);
+					this.contextSubject.next({ ...ctx, folderType });
+				} else {
+					// No FolderType element — try site tree metadata lookup
+					this.enrichFromMetadataLookup(ctx);
+				}
+			},
+			error: () => {
+				// API failed — try site tree metadata lookup
+				this.enrichFromMetadataLookup(ctx);
+			}
+		});
+	}
+
+	/**
+	 * Enrich context from the metadata lookup service.
+	 * Matches asset folder name to a site tree metadata page.
+	 */
+	private enrichFromMetadataLookup(ctx: AssetContext): void {
+		const folderName = ctx.name;
+		const metaEntry = this.metadataLookup.lookupByFolderName(folderName);
+
+		if (metaEntry) {
+			console.log(`[IGX-OTT] Metadata lookup: found page ${metaEntry.pageId} for folder "${folderName}" (${metaEntry.schema})`);
+			this.contextSubject.next({
+				...ctx,
+				folderType: metaEntry.schema,
+				metadataPageId: metaEntry.pageId
 			});
+		} else {
+			console.log(`[IGX-OTT] No metadata page found for folder "${folderName}"`);
 		}
 	}
 

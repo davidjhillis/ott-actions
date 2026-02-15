@@ -13,6 +13,10 @@ export interface AssetContext {
 	path: string;
 	/** Asset type / schema */
 	schema?: string;
+	/** OTT folder type from Folder schema FolderType element or site tree metadata */
+	folderType?: string;
+	/** Site tree page ID for metadata (when using site tree as metadata store) */
+	metadataPageId?: string;
 	/** Workflow status */
 	workflowStatus?: string;
 	/** Parent folder ID */

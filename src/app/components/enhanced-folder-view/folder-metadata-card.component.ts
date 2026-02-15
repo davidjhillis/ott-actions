@@ -1,17 +1,19 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { LucideIconComponent } from '../shared/lucide-icon.component';
 import {
 	FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetadata,
 	TranslationBatchMetadata, CmsPageField
 } from '../../models/translation.model';
+import { ElementUpdate } from '../../services/metadata-lookup.service';
 
 @Component({
 	selector: 'ott-folder-metadata-card',
 	standalone: true,
-	imports: [CommonModule, LucideIconComponent],
+	imports: [CommonModule, FormsModule, LucideIconComponent],
 	template: `
-		<div class="metadata-card" [class.expanded]="expanded">
+		<div class="metadata-card" [class.expanded]="expanded" [class.editing]="editing">
 			<!-- Always-visible summary row -->
 			<div class="card-summary" (click)="expanded = !expanded">
 				<div class="summary-left">
@@ -58,9 +60,18 @@ import {
 					</ng-container>
 				</div>
 
-				<button class="expand-btn" [class.rotated]="expanded">
-					<ott-icon name="chevron-down" [size]="14"></ott-icon>
-				</button>
+				<div class="summary-right">
+					<!-- Edit button (only when metadataPageId is set) -->
+					<button *ngIf="metadataPageId && expanded && !editing"
+						class="edit-mode-btn"
+						(click)="$event.stopPropagation(); startEditing()"
+						title="Edit metadata">
+						<ott-icon name="pencil" [size]="13"></ott-icon>
+					</button>
+					<button class="expand-btn" [class.rotated]="expanded">
+						<ott-icon name="chevron-down" [size]="14"></ott-icon>
+					</button>
+				</div>
 			</div>
 
 			<!-- Expanded detail panel -->
@@ -73,28 +84,43 @@ import {
 					<div class="detail-grid">
 						<div class="detail-item">
 							<span class="detail-label">Base Designation</span>
-							<span class="detail-value mono">{{ designationMeta.baseDesignation }}</span>
+							<span class="detail-value mono" *ngIf="!editing">{{ designationMeta.baseDesignation }}</span>
+							<input *ngIf="editing" class="edit-input" type="text"
+								[ngModel]="editValues['BaseDesignation']"
+								(ngModelChange)="editValues['BaseDesignation'] = $event">
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Organization</span>
-							<span class="detail-value">{{ designationMeta.organization }}</span>
+							<span class="detail-value" *ngIf="!editing">{{ designationMeta.organization }}</span>
+							<input *ngIf="editing" class="edit-input" type="text"
+								[ngModel]="editValues['Organization']"
+								(ngModelChange)="editValues['Organization'] = $event">
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Committee</span>
-							<span class="detail-value">{{ designationMeta.committee }}</span>
+							<span class="detail-value" *ngIf="!editing">{{ designationMeta.committee }}</span>
+							<input *ngIf="editing" class="edit-input" type="text"
+								[ngModel]="editValues['Committee']"
+								(ngModelChange)="editValues['Committee'] = $event">
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Home Editor</span>
-							<span class="detail-value">{{ designationMeta.homeEditor }}</span>
+							<span class="detail-value" *ngIf="!editing">{{ designationMeta.homeEditor }}</span>
+							<input *ngIf="editing" class="edit-input" type="text"
+								[ngModel]="editValues['HomeEditor']"
+								(ngModelChange)="editValues['HomeEditor'] = $event">
 						</div>
-						<div class="detail-item" *ngIf="designationMeta.reportNumber">
+						<div class="detail-item" *ngIf="designationMeta.reportNumber || editing">
 							<span class="detail-label">Report #</span>
-							<span class="detail-value mono">
+							<span class="detail-value mono" *ngIf="!editing">
 								{{ designationMeta.reportNumber }}
 								<button class="edit-inline-btn" (click)="$event.stopPropagation(); editReportNumber.emit()" title="Edit">
 									<ott-icon name="pencil" [size]="11"></ott-icon>
 								</button>
 							</span>
+							<input *ngIf="editing" class="edit-input" type="text"
+								[ngModel]="editValues['ReportNumber']"
+								(ngModelChange)="editValues['ReportNumber'] = $event">
 						</div>
 					</div>
 
@@ -125,25 +151,47 @@ import {
 					<div class="detail-grid">
 						<div class="detail-item span-2">
 							<span class="detail-label">Standard Title</span>
-							<span class="detail-value">{{ datedVersionMeta.standardTitle }}</span>
+							<span class="detail-value" *ngIf="!editing">{{ datedVersionMeta.standardTitle }}</span>
+							<input *ngIf="editing" class="edit-input wide" type="text"
+								[ngModel]="editValues['StandardTitle']"
+								(ngModelChange)="editValues['StandardTitle'] = $event">
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Action Type</span>
-							<span class="detail-value">{{ datedVersionMeta.actionType }}</span>
+							<span class="detail-value" *ngIf="!editing">{{ datedVersionMeta.actionType }}</span>
+							<select *ngIf="editing" class="edit-select"
+								[ngModel]="editValues['ActionType']"
+								(ngModelChange)="editValues['ActionType'] = $event">
+								<option value="New Standard">New Standard</option>
+								<option value="Revision">Revision</option>
+								<option value="Reapproval">Reapproval</option>
+								<option value="Amendment">Amendment</option>
+								<option value="Withdrawal">Withdrawal</option>
+							</select>
 						</div>
-						<div class="detail-item" *ngIf="datedVersionMeta.approvalDate">
+						<div class="detail-item">
 							<span class="detail-label">Approval Date</span>
-							<span class="detail-value">{{ datedVersionMeta.approvalDate }}</span>
+							<span class="detail-value" *ngIf="!editing">{{ datedVersionMeta.approvalDate }}</span>
+							<input *ngIf="editing" class="edit-input" type="date"
+								[ngModel]="editValues['ApprovalDate']"
+								(ngModelChange)="editValues['ApprovalDate'] = $event">
 						</div>
-						<div class="detail-item" *ngIf="datedVersionMeta.publicationDate">
+						<div class="detail-item">
 							<span class="detail-label">Publication Date</span>
-							<span class="detail-value">{{ datedVersionMeta.publicationDate }}</span>
+							<span class="detail-value" *ngIf="!editing">{{ datedVersionMeta.publicationDate }}</span>
+							<input *ngIf="editing" class="edit-input" type="date"
+								[ngModel]="editValues['PublicationDate']"
+								(ngModelChange)="editValues['PublicationDate'] = $event">
 						</div>
 						<div class="detail-item" *ngIf="datedVersionMeta.designationCollectionName">
 							<span class="detail-label">Designation Collection</span>
-							<span class="detail-value link" (click)="$event.stopPropagation(); navigateToCollection.emit(datedVersionMeta.designationCollectionId)">
+							<span class="detail-value link" *ngIf="!editing"
+								(click)="$event.stopPropagation(); navigateToCollection.emit(datedVersionMeta.designationCollectionId)">
 								{{ datedVersionMeta.designationCollectionName }}
 							</span>
+							<input *ngIf="editing" class="edit-input" type="text"
+								[ngModel]="editValues['DesignationCollectionName']"
+								(ngModelChange)="editValues['DesignationCollectionName'] = $event">
 						</div>
 					</div>
 				</ng-container>
@@ -153,27 +201,49 @@ import {
 					<div class="detail-grid">
 						<div class="detail-item">
 							<span class="detail-label">Batch ID</span>
-							<span class="detail-value mono">{{ batchMeta.batchId }}</span>
+							<span class="detail-value mono" *ngIf="!editing">{{ batchMeta.batchId }}</span>
+							<input *ngIf="editing" class="edit-input" type="text"
+								[ngModel]="editValues['BatchID']"
+								(ngModelChange)="editValues['BatchID'] = $event">
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Vendor</span>
-							<span class="detail-value"><span class="vendor-badge">{{ batchMeta.vendor }}</span></span>
+							<span class="detail-value" *ngIf="!editing"><span class="vendor-badge">{{ batchMeta.vendor }}</span></span>
+							<input *ngIf="editing" class="edit-input" type="text"
+								[ngModel]="editValues['Vendor']"
+								(ngModelChange)="editValues['Vendor'] = $event">
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Type</span>
-							<span class="detail-value">{{ batchMeta.type }}</span>
+							<span class="detail-value" *ngIf="!editing">{{ batchMeta.type }}</span>
+							<select *ngIf="editing" class="edit-select"
+								[ngModel]="editValues['Type']"
+								(ngModelChange)="editValues['Type'] = $event">
+								<option value="New Translation">New Translation</option>
+								<option value="Revision">Revision</option>
+								<option value="Re-translation">Re-translation</option>
+							</select>
 						</div>
-						<div class="detail-item" *ngIf="batchMeta.dueDate">
+						<div class="detail-item">
 							<span class="detail-label">Due Date</span>
-							<span class="detail-value">{{ batchMeta.dueDate }}</span>
+							<span class="detail-value" *ngIf="!editing">{{ batchMeta.dueDate }}</span>
+							<input *ngIf="editing" class="edit-input" type="date"
+								[ngModel]="editValues['DueDate']"
+								(ngModelChange)="editValues['DueDate'] = $event">
 						</div>
-						<div class="detail-item" *ngIf="batchMeta.assignedTo">
+						<div class="detail-item">
 							<span class="detail-label">Assigned To</span>
-							<span class="detail-value">{{ batchMeta.assignedTo }}</span>
+							<span class="detail-value" *ngIf="!editing">{{ batchMeta.assignedTo }}</span>
+							<input *ngIf="editing" class="edit-input" type="text"
+								[ngModel]="editValues['AssignedTo']"
+								(ngModelChange)="editValues['AssignedTo'] = $event">
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Standards</span>
-							<span class="detail-value">{{ batchMeta.standardCount }}</span>
+							<span class="detail-value" *ngIf="!editing">{{ batchMeta.standardCount }}</span>
+							<input *ngIf="editing" class="edit-input" type="number"
+								[ngModel]="editValues['StandardCount']"
+								(ngModelChange)="editValues['StandardCount'] = $event">
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Days Elapsed</span>
@@ -181,11 +251,18 @@ import {
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Readiness</span>
-							<span class="detail-value">
+							<span class="detail-value" *ngIf="!editing">
 								<span class="readiness-badge" [ngClass]="'readiness-' + batchMeta.productionReadiness.toLowerCase().replace(' ', '-')">
 									{{ batchMeta.productionReadiness }}
 								</span>
 							</span>
+							<select *ngIf="editing" class="edit-select"
+								[ngModel]="editValues['ProductionReadiness']"
+								(ngModelChange)="editValues['ProductionReadiness'] = $event">
+								<option value="Ready">Ready</option>
+								<option value="Not Ready">Not Ready</option>
+								<option value="Partial">Partial</option>
+							</select>
 						</div>
 					</div>
 				</ng-container>
@@ -197,32 +274,55 @@ import {
 							<div class="detail-item" [class.span-2]="isWideField(field)">
 								<span class="detail-label">{{ field.label }}</span>
 
-								<!-- Text / date -->
-								<span class="detail-value" *ngIf="field.type === 'text' || field.type === 'date'">
-									{{ field.value }}
-								</span>
+								<!-- Read mode -->
+								<ng-container *ngIf="!editing">
+									<!-- Text / date -->
+									<span class="detail-value" *ngIf="field.type === 'text' || field.type === 'date'">
+										{{ field.value }}
+									</span>
 
-								<!-- Link -->
-								<span class="detail-value link" *ngIf="field.type === 'link'"
-									(click)="$event.stopPropagation()">
-									{{ field.value?.Name || field.value?.href || field.value }}
-								</span>
+									<!-- Link -->
+									<span class="detail-value link" *ngIf="field.type === 'link'"
+										(click)="$event.stopPropagation()">
+										{{ field.value?.Name || field.value?.href || field.value }}
+									</span>
 
-								<!-- List (chips) -->
-								<span class="detail-value" *ngIf="field.type === 'list'">
-									<span class="chip" *ngFor="let item of field.value">{{ item }}</span>
-								</span>
+									<!-- List (chips) -->
+									<span class="detail-value" *ngIf="field.type === 'list'">
+										<span class="chip" *ngFor="let item of field.value">{{ item }}</span>
+									</span>
 
-								<!-- Dropdown -->
-								<span class="detail-value" *ngIf="field.type === 'dropdown'">
-									{{ field.value }}
-								</span>
+									<!-- Dropdown -->
+									<span class="detail-value" *ngIf="field.type === 'dropdown'">
+										{{ field.value }}
+									</span>
 
-								<!-- Rich text (show stripped) -->
-								<span class="detail-value" *ngIf="field.type === 'rich-text'"
-									[title]="field.value">
-									{{ stripHtml(field.value) | slice:0:120 }}
-								</span>
+									<!-- Rich text (show stripped) -->
+									<span class="detail-value" *ngIf="field.type === 'rich-text'"
+										[title]="field.value">
+										{{ stripHtml(field.value) | slice:0:120 }}
+									</span>
+								</ng-container>
+
+								<!-- Edit mode -->
+								<ng-container *ngIf="editing">
+									<input *ngIf="field.type === 'text' || field.type === 'link'" class="edit-input" type="text"
+										[ngModel]="editValues[field.name]"
+										(ngModelChange)="editValues[field.name] = $event">
+									<input *ngIf="field.type === 'date'" class="edit-input" type="date"
+										[ngModel]="editValues[field.name]"
+										(ngModelChange)="editValues[field.name] = $event">
+									<textarea *ngIf="field.type === 'rich-text'" class="edit-textarea"
+										[ngModel]="editValues[field.name]"
+										(ngModelChange)="editValues[field.name] = $event"></textarea>
+									<input *ngIf="field.type === 'dropdown'" class="edit-input" type="text"
+										[ngModel]="editValues[field.name]"
+										(ngModelChange)="editValues[field.name] = $event">
+									<input *ngIf="field.type === 'list'" class="edit-input" type="text"
+										placeholder="Comma-separated values"
+										[ngModel]="editValues[field.name]"
+										(ngModelChange)="editValues[field.name] = $event">
+								</ng-container>
 							</div>
 						</ng-container>
 					</div>
@@ -266,6 +366,15 @@ import {
 						</div>
 					</div>
 				</ng-container>
+
+				<!-- Edit mode footer -->
+				<div class="edit-footer" *ngIf="editing">
+					<button class="btn-cancel" (click)="$event.stopPropagation(); cancelEditing()">Cancel</button>
+					<button class="btn-save" (click)="$event.stopPropagation(); saveEdits()" [disabled]="saving">
+						<ott-icon *ngIf="saving" name="loader" [size]="13"></ott-icon>
+						{{ saving ? 'Saving...' : 'Save' }}
+					</button>
+				</div>
 			</div>
 		</div>
 	`,
@@ -280,6 +389,7 @@ import {
 			transition: border-color 0.15s;
 		}
 		.metadata-card:hover { border-color: var(--ott-border); }
+		.metadata-card.editing { border-color: var(--ott-primary); }
 
 		/* Summary row */
 		.card-summary {
@@ -290,6 +400,9 @@ import {
 		.card-summary:hover { background: var(--ott-bg-muted); }
 		.summary-left {
 			display: flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap;
+		}
+		.summary-right {
+			display: flex; align-items: center; gap: 4px;
 		}
 		.schema-badge {
 			font-size: var(--ott-font-size-xs); font-weight: 600; text-transform: uppercase;
@@ -314,6 +427,15 @@ import {
 		}
 		.expand-btn:hover { color: var(--ott-text); }
 		.expand-btn.rotated { transform: rotate(180deg); }
+
+		/* Edit mode button */
+		.edit-mode-btn {
+			border: none; background: none; cursor: pointer;
+			color: var(--ott-text-muted); padding: 3px; display: flex;
+			border-radius: var(--ott-radius-sm);
+			transition: color 0.15s, background 0.15s;
+		}
+		.edit-mode-btn:hover { color: var(--ott-primary); background: var(--ott-primary-light); }
 
 		/* Detail panel */
 		.card-details {
@@ -344,6 +466,59 @@ import {
 			transition: color 0.15s;
 		}
 		.edit-inline-btn:hover { color: var(--ott-primary); }
+
+		/* Edit controls */
+		.edit-input, .edit-select, .edit-textarea {
+			font-family: var(--ott-font);
+			font-size: var(--ott-font-size-base);
+			color: var(--ott-text);
+			background: var(--ott-bg);
+			border: 1px solid var(--ott-border);
+			border-radius: var(--ott-radius-sm);
+			padding: 5px 8px;
+			width: 100%;
+			box-sizing: border-box;
+			transition: border-color 0.15s;
+		}
+		.edit-input:focus, .edit-select:focus, .edit-textarea:focus {
+			outline: none;
+			border-color: var(--ott-primary);
+		}
+		.edit-input.wide { grid-column: span 2; }
+		.edit-textarea {
+			min-height: 60px;
+			resize: vertical;
+		}
+
+		/* Edit footer */
+		.edit-footer {
+			display: flex; justify-content: flex-end; gap: 8px;
+			margin-top: 14px; padding-top: 12px;
+			border-top: 1px solid var(--ott-border-light);
+		}
+		.btn-cancel, .btn-save {
+			font-family: var(--ott-font);
+			font-size: var(--ott-font-size-sm);
+			font-weight: 500;
+			padding: 6px 14px;
+			border-radius: var(--ott-radius-sm);
+			cursor: pointer;
+			display: inline-flex; align-items: center; gap: 5px;
+			transition: background 0.15s, color 0.15s;
+		}
+		.btn-cancel {
+			border: 1px solid var(--ott-border);
+			background: var(--ott-bg);
+			color: var(--ott-text-secondary);
+		}
+		.btn-cancel:hover { background: var(--ott-bg-muted); }
+		.btn-save {
+			border: none;
+			background: var(--ott-primary);
+			color: white;
+		}
+		.btn-save:hover { opacity: 0.9; }
+		.btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
 
 		/* Chips for list fields */
 		.chip {
@@ -409,12 +584,19 @@ export class FolderMetadataCardComponent {
 	@Input() folderName = '';
 	@Input() folderId = '';
 	@Input() pageFields: CmsPageField[] = [];
+	@Input() metadataPageId?: string;
 	@Output() editReportNumber = new EventEmitter<void>();
 	@Output() navigateToCollection = new EventEmitter<string>();
+	@Output() metadataSave = new EventEmitter<{ pageId: string; elements: ElementUpdate[] }>();
 
 	expanded = false;
 	tmExpanded = false;
 	expandedTables: Record<string, boolean> = {};
+
+	/** Inline editing state */
+	editing = false;
+	saving = false;
+	editValues: Record<string, any> = {};
 
 	get schemaLabel(): string {
 		switch (this.schema) {
@@ -473,5 +655,71 @@ export class FolderMetadataCardComponent {
 	stripHtml(html: string): string {
 		if (!html) return '';
 		return html.replace(/<[^>]*>/g, '').trim();
+	}
+
+	/** Enter edit mode — populate editValues from current metadata */
+	startEditing(): void {
+		this.editValues = {};
+
+		if (this.designationMeta) {
+			this.editValues['BaseDesignation'] = this.designationMeta.baseDesignation;
+			this.editValues['Organization'] = this.designationMeta.organization;
+			this.editValues['Committee'] = this.designationMeta.committee;
+			this.editValues['HomeEditor'] = this.designationMeta.homeEditor;
+			this.editValues['ReportNumber'] = this.designationMeta.reportNumber || '';
+		} else if (this.datedVersionMeta) {
+			this.editValues['StandardTitle'] = this.datedVersionMeta.standardTitle;
+			this.editValues['ActionType'] = this.datedVersionMeta.actionType;
+			this.editValues['ApprovalDate'] = this.datedVersionMeta.approvalDate || '';
+			this.editValues['PublicationDate'] = this.datedVersionMeta.publicationDate || '';
+			this.editValues['DesignationCollectionName'] = this.datedVersionMeta.designationCollectionName || '';
+		} else if (this.batchMeta) {
+			this.editValues['BatchID'] = this.batchMeta.batchId;
+			this.editValues['Vendor'] = this.batchMeta.vendor;
+			this.editValues['Type'] = this.batchMeta.type;
+			this.editValues['DueDate'] = this.batchMeta.dueDate || '';
+			this.editValues['AssignedTo'] = this.batchMeta.assignedTo || '';
+			this.editValues['StandardCount'] = this.batchMeta.standardCount;
+			this.editValues['ProductionReadiness'] = this.batchMeta.productionReadiness;
+		} else {
+			// Dynamic fields
+			for (const field of this.pageFields) {
+				if (field.type !== 'table') {
+					this.editValues[field.name] = field.value;
+				}
+			}
+		}
+
+		this.editing = true;
+	}
+
+	/** Cancel editing — discard changes */
+	cancelEditing(): void {
+		this.editing = false;
+		this.editValues = {};
+	}
+
+	/** Save edits — emit element updates for the parent to persist */
+	saveEdits(): void {
+		if (!this.metadataPageId) return;
+
+		this.saving = true;
+
+		const elements: ElementUpdate[] = Object.entries(this.editValues)
+			.map(([name, value]) => ({ name, value }));
+
+		this.metadataSave.emit({
+			pageId: this.metadataPageId,
+			elements
+		});
+	}
+
+	/** Called by parent after save completes (success or failure) */
+	onSaveComplete(success: boolean): void {
+		this.saving = false;
+		if (success) {
+			this.editing = false;
+			this.editValues = {};
+		}
 	}
 }

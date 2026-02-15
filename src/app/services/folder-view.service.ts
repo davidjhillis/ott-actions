@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable, of, forkJoin } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { CMSCommunicationsService } from './cms-communications.service';
 import { CmsApiService, CmsPageData, CmsAssetChild, CmsPageProperties } from './cms-api.service';
+import { MetadataLookupService, ElementUpdate } from './metadata-lookup.service';
 import { AssetContext } from '../models/asset-context.model';
 import {
 	FolderSchema, FolderTab, FolderChildItem,
@@ -42,11 +43,13 @@ export class FolderViewService {
 
 	constructor(
 		private cms: CMSCommunicationsService,
-		private cmsApi: CmsApiService
+		private cmsApi: CmsApiService,
+		private metadataLookup: MetadataLookupService
 	) {}
 
 	/**
 	 * Resolve folder view data from asset context.
+	 * Uses ctx.folderType (from Folder schema FolderType element) as the logical schema.
 	 * Priority: NG_REF (direct CMS state) → REST API → postMessage → demo data.
 	 */
 	loadFolderView(ctx: AssetContext): void {
@@ -78,7 +81,6 @@ export class FolderViewService {
 	private loadFromNgRef(ctx: AssetContext, ngRef: any): void {
 		const model = ngRef.currentContent?.Model?._value;
 		if (!model) {
-			// Model not available yet, fall back to REST
 			this.cmsApi.checkAvailability().subscribe(available => {
 				if (available) this.loadFromRestApi(ctx);
 				else this.viewDataSubject.next(this.getDemoData(ctx));
@@ -86,12 +88,13 @@ export class FolderViewService {
 			return;
 		}
 
-		const schema = this.resolveSchema(model.SchemaName || ctx.schema);
+		// Use folderType (from FolderType element) as the logical schema
+		const schema = this.resolveSchema(ctx.folderType || model.SchemaName || ctx.schema);
 		const breadcrumbs = this.buildBreadcrumbsFromPath(ctx.path || '', ctx.id, model.Name || ctx.name);
 		const children = this.parseChildrenFromDom();
 		const metadata = this.extractMetadataFromModel(schema, model);
 
-		this.viewDataSubject.next({
+		const data: FolderViewData = {
 			schema,
 			tabs: this.getTabsForSchema(schema),
 			breadcrumbs,
@@ -102,9 +105,15 @@ export class FolderViewService {
 			healthcheck: [],
 			pageFields: this.buildPageFieldsFromModel(model),
 			rawPageData: null
-		});
+		};
 
-		console.log(`[IGX-OTT] Loaded from NG_REF: ${model.Name}, schema=${schema}, children=${children.length}`);
+		this.viewDataSubject.next(data);
+		console.log(`[IGX-OTT] Loaded from NG_REF: ${model.Name}, folderType=${ctx.folderType}, schema=${schema}, children=${children.length}`);
+
+		// Enrich with site tree metadata if available
+		if (ctx.metadataPageId) {
+			this.loadMetadataFromSiteTree(ctx.metadataPageId, schema, data);
+		}
 	}
 
 	/**
@@ -233,7 +242,11 @@ export class FolderViewService {
 			properties: this.cmsApi.getPageProperties(ctx.id).pipe(catchError(() => of(null)))
 		}).subscribe({
 			next: ({ pageData, children, properties }) => {
-				const schema = this.resolveSchema(pageData?.Schema || properties?.Schema || ctx.schema);
+				// Use folderType first, then fall back to page/property schema
+				const folderType = pageData?.Elements?.['FolderType']?.Value
+					|| pageData?.Elements?.['FolderType']
+					|| ctx.folderType;
+				const schema = this.resolveSchema(folderType || pageData?.Schema || properties?.Schema || ctx.schema);
 				const breadcrumbs = this.buildBreadcrumbsFromProperties(properties, ctx);
 				const childItems = this.mapAssetChildren(children);
 				const pageFields = pageData ? this.cmsApi.parsePageFields(pageData) : [];
@@ -245,7 +258,7 @@ export class FolderViewService {
 				const translatedCollections = this.extractTranslatedCollections(children, pageData);
 				const healthcheck = this.buildHealthcheck(translatedCollections);
 
-				this.viewDataSubject.next({
+				const data: FolderViewData = {
 					schema,
 					tabs: this.getTabsForSchema(schema),
 					breadcrumbs,
@@ -256,7 +269,14 @@ export class FolderViewService {
 					healthcheck,
 					pageFields,
 					rawPageData: pageData
-				});
+				};
+
+				this.viewDataSubject.next(data);
+
+				// Enrich with site tree metadata if available
+				if (ctx.metadataPageId) {
+					this.loadMetadataFromSiteTree(ctx.metadataPageId, schema, data);
+				}
 			},
 			error: () => {
 				// Fall back to demo data
@@ -391,6 +411,77 @@ export class FolderViewService {
 		);
 	}
 
+	/**
+	 * Load metadata from a site tree page and merge into existing folder view data.
+	 * Called when ctx.metadataPageId is set (folder has a matching site tree metadata page).
+	 */
+	private loadMetadataFromSiteTree(metadataPageId: string, schema: FolderSchema, currentData: FolderViewData): void {
+		this.metadataLookup.getPageData(metadataPageId).pipe(
+			catchError(err => {
+				console.warn(`[IGX-OTT] Failed to load site tree metadata for ${metadataPageId}:`, err);
+				return of(null);
+			})
+		).subscribe(pageData => {
+			if (!pageData) return;
+
+			const metadata = this.extractTypedMetadata(schema, pageData);
+			const pageFields = this.cmsApi.parsePageFields(pageData);
+
+			// Merge site tree metadata into current data
+			const updated: FolderViewData = {
+				...currentData,
+				metadata: metadata || currentData.metadata,
+				pageFields: pageFields.length > 0 ? pageFields : currentData.pageFields,
+				rawPageData: pageData
+			};
+
+			this.viewDataSubject.next(updated);
+			console.log(`[IGX-OTT] Enriched with site tree metadata from ${metadataPageId}`);
+		});
+	}
+
+	/**
+	 * Save metadata element updates to the site tree page.
+	 * Called from the enhanced folder view when inline editing is used.
+	 */
+	saveMetadataElements(metadataPageId: string, elements: ElementUpdate[]): Observable<boolean> {
+		if (this.cms.isDevMode) {
+			console.log(`[IGX-OTT] Dev: Saved metadata for ${metadataPageId}`, elements);
+			// Update the current view data in dev mode
+			const current = this.viewDataSubject.value;
+			if (current) {
+				for (const el of elements) {
+					if (current.rawPageData?.Elements) {
+						current.rawPageData.Elements[el.name] = el.value;
+					}
+				}
+				// Re-extract metadata from updated page data
+				if (current.rawPageData) {
+					const metadata = this.extractTypedMetadata(current.schema, current.rawPageData);
+					const pageFields = this.cmsApi.parsePageFields(current.rawPageData);
+					this.viewDataSubject.next({
+						...current,
+						metadata: metadata || current.metadata,
+						pageFields: pageFields.length > 0 ? pageFields : current.pageFields
+					});
+				}
+			}
+			return of(true);
+		}
+
+		return this.metadataLookup.saveElements(metadataPageId, elements).pipe(
+			map(() => true),
+			tap(() => {
+				// Refresh metadata after save
+				const current = this.viewDataSubject.value;
+				if (current) {
+					this.loadMetadataFromSiteTree(metadataPageId, current.schema, current);
+				}
+			}),
+			catchError(() => of(false))
+		);
+	}
+
 	// -- Private helpers --
 
 	/**
@@ -509,7 +600,7 @@ export class FolderViewService {
 	}
 
 	private mapCmsToViewData(ctx: AssetContext, props: any): FolderViewData {
-		const schema = this.resolveSchema(props?.Schema || ctx.schema);
+		const schema = this.resolveSchema(ctx.folderType || props?.Schema || ctx.schema);
 		return {
 			schema,
 			tabs: this.getTabsForSchema(schema),
