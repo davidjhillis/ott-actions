@@ -46,11 +46,10 @@ export class AssetContextService implements OnDestroy {
 				]
 			});
 		} else {
-			// Load metadata index before subscribing to router
-			this.metadataLookup.loadMetadataIndex().subscribe({
-				next: () => this.subscribeToRouter(),
-				error: () => this.subscribeToRouter() // still subscribe even if index fails
-			});
+			// Subscribe to router immediately (don't delay — would miss initial nav)
+			this.subscribeToRouter();
+			// Load metadata index in parallel — enriches context when ready
+			this.metadataLookup.loadMetadataIndex().subscribe();
 		}
 	}
 
