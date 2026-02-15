@@ -118,12 +118,13 @@ export class CmsApiService {
 	}
 
 	/**
-	 * Check if CMS API is reachable
+	 * Check if CMS API is reachable.
+	 * Uses REST v1 root endpoint (proven to work).
 	 */
 	checkAvailability(): Observable<boolean> {
 		if (this.isAvailable !== null) return of(this.isAvailable);
 
-		return this.http.get(`${this.baseUrl}/api/AssetServices/GetAssetRoots`, {
+		return this.http.get(`${this.baseUrl}/api/v1/pages/root`, {
 			headers: this.getHeaders(),
 			responseType: 'text'
 		}).pipe(
@@ -133,15 +134,61 @@ export class CmsApiService {
 	}
 
 	/**
-	 * Get page data including all schema fields
+	 * Get page data including all schema fields.
+	 * Tries REST v1 preview/page-xml first (returns XML that we parse),
+	 * then falls back to WCF PageCommandsServices.
 	 */
 	getPageData(pageId: string, pubTarget?: string): Observable<CmsPageData> {
-		const params: any = { pageId };
-		if (pubTarget) params.pubTarget = pubTarget;
-
-		return this.callApi<CmsPageData>(
-			'PageCommandsServices', 'GetPageData', params
+		// Try REST v1 preview endpoint first (proven to work)
+		return this.http.get<any>(
+			`${this.baseUrl}/api/v1/preview/page-xml?pageId=${encodeURIComponent(pageId)}`,
+			{ headers: this.getHeaders() }
+		).pipe(
+			map(response => this.parsePageXml(response)),
+			catchError(() => {
+				// Fall back to WCF endpoint
+				const params: any = { pageId };
+				if (pubTarget) params.pubTarget = pubTarget;
+				return this.callApi<CmsPageData>('PageCommandsServices', 'GetPageData', params);
+			})
 		);
+	}
+
+	/**
+	 * Parse the preview/page-xml response into CmsPageData.
+	 * The response has { Content: "<xml>", PageId, Name, ... }
+	 * Extracts both element values and UIDs (needed for SavePartial).
+	 */
+	private parsePageXml(response: any): CmsPageData {
+		const xml = response?.Content || '';
+		const pageId = response?.PageId || '';
+		const name = response?.Name || '';
+
+		// Parse XML elements into key-value pairs
+		const elements: Record<string, any> = {};
+		// Match elements with content: <TagName attr="val">content</TagName>
+		const regex = /<(\w+)\s([^>]*)>([^<]*)<\/\1>/g;
+		let match;
+		while ((match = regex.exec(xml)) !== null) {
+			const [, tagName, attrs, value] = match;
+			elements[tagName] = value.trim() || '';
+			// Store UID for SavePartial
+			const uidMatch = attrs.match(/UID="([^"]+)"/);
+			if (uidMatch) {
+				elements[`__uid_${tagName}`] = uidMatch[1];
+			}
+		}
+
+		// Extract schema name from root element
+		const rootMatch = xml.match(/^<(\w+)/);
+		const schema = rootMatch ? rootMatch[1] : '';
+
+		return {
+			ID: pageId,
+			Name: name,
+			Schema: schema,
+			Elements: elements
+		};
 	}
 
 	/**
@@ -163,11 +210,32 @@ export class CmsApiService {
 	}
 
 	/**
-	 * Get child pages of a parent
+	 * Get child pages of a parent.
+	 * Uses REST v1 /pages/page/children endpoint (proven to work),
+	 * falls back to WCF SiteTreeServices.
 	 */
 	getChildPagesSimple(parentId: string, depth: number = 1): Observable<CmsChildPage[]> {
-		return this.callApi<CmsChildPage[]>(
-			'SiteTreeServices', 'GetChildPagesSimple', { parentId, depth: depth.toString() }
+		return this.http.get<any>(
+			`${this.baseUrl}/api/v1/pages/page/children?id=${encodeURIComponent(parentId)}`,
+			{ headers: this.getHeaders() }
+		).pipe(
+			map(response => {
+				const results = response?.Results || [];
+				return results.map((r: any) => ({
+					ID: r.Id || r.ID || '',
+					Name: r.Name || '',
+					Schema: r.SchemaName || '',
+					Path: r.Path || '',
+					IsFolder: r.SchemaName === 'Folder' || r.ChildrenCount > 0,
+					LastModifiedDate: r.LastModified || ''
+				}));
+			}),
+			catchError(() => {
+				// Fall back to WCF endpoint
+				return this.callApi<CmsChildPage[]>(
+					'SiteTreeServices', 'GetChildPagesSimple', { parentId, depth: depth.toString() }
+				);
+			})
 		);
 	}
 
@@ -198,9 +266,10 @@ export class CmsApiService {
 	parsePageFields(pageData: CmsPageData): CmsPageField[] {
 		const fields: CmsPageField[] = [];
 
-		// Parse Elements
+		// Parse Elements (skip internal __uid_* keys used for SavePartial)
 		if (pageData.Elements) {
 			for (const [key, value] of Object.entries(pageData.Elements)) {
+				if (key.startsWith('__uid_')) continue;
 				fields.push(this.classifyField(key, value));
 			}
 		}
@@ -213,6 +282,20 @@ export class CmsApiService {
 		}
 
 		return fields;
+	}
+
+	/**
+	 * POST to a WCF service endpoint.
+	 * Used for save operations where the data wrapper format matters.
+	 */
+	postWcf<T>(service: string, action: string, data: any): Observable<T> {
+		const url = `${this.baseUrl}/REST/${service}.svc/${action}`;
+		return this.http.post<T>(url, { data }, { headers: this.getHeaders() }).pipe(
+			catchError(err => {
+				console.warn(`[IGX-OTT] WCF POST failed: ${service}.${action}`, err);
+				return throwError(() => err);
+			})
+		);
 	}
 
 	// -- Private helpers --

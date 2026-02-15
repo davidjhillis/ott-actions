@@ -48,6 +48,10 @@ export interface DesignationCollectionMetadata {
 	homeEditor: string;
 	homeEditorEmail: string;
 	reportNumber?: string;
+	/** Source locale (e.g., 'en-US') — from CMS DesignationCollection component */
+	sourceLocale?: string;
+	/** Notes — free text from CMS DesignationCollection component */
+	notes?: string;
 	translationMaintenance: TranslationLanguageAssignment[];
 }
 

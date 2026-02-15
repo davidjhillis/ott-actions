@@ -100,18 +100,13 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 		}
 
 		// In CMS mode: manage Enhanced Folder View lifecycle based on context.
-		// Inject for ASTM translation workflow schemas OR when folderType/metadataPageId is set.
-		// Also allow 'Folder' (generic/unknown) through so the view loads while schema
-		// is being resolved — folder-view.service handles content appropriately.
-		const ALLOWED_SCHEMAS = [
-			'DesignationCollection', 'StandardDatedVersion',
-			'TranslationBatch', 'TranslatedStandardCollection',
-			'Folder'  // passthrough for unresolved schemas
-		];
-
+		// Only inject when the folder has explicit OTT metadata:
+		//   - folderType set (from FolderType element or site tree metadata lookup)
+		//   - OR metadataPageId set (site tree metadata page exists)
+		// Generic 'Folder' schema folders keep the native CMS view.
 		this.observableSubTeardowns.push(
 			this.assetContextService.context$.subscribe(ctx => {
-				if (ctx?.isFolder && (ctx.folderType || ALLOWED_SCHEMAS.includes(ctx.schema || 'Folder'))) {
+				if (ctx?.isFolder && (ctx.folderType || ctx.metadataPageId)) {
 					this.waitForFolderViewThenInject();
 				} else {
 					this.mainComponentService.destroyEnhancedFolderView();

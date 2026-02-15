@@ -83,11 +83,11 @@ import { ElementUpdate } from '../../services/metadata-lookup.service';
 				<ng-container *ngIf="designationMeta">
 					<div class="detail-grid">
 						<div class="detail-item">
-							<span class="detail-label">Base Designation</span>
+							<span class="detail-label">Designation Number</span>
 							<span class="detail-value mono" *ngIf="!editing">{{ designationMeta.baseDesignation }}</span>
 							<input *ngIf="editing" class="edit-input" type="text"
-								[ngModel]="editValues['BaseDesignation']"
-								(ngModelChange)="editValues['BaseDesignation'] = $event">
+								[ngModel]="editValues['DesignationNumber']"
+								(ngModelChange)="editValues['DesignationNumber'] = $event">
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Organization</span>
@@ -121,6 +121,20 @@ import { ElementUpdate } from '../../services/metadata-lookup.service';
 							<input *ngIf="editing" class="edit-input" type="text"
 								[ngModel]="editValues['ReportNumber']"
 								(ngModelChange)="editValues['ReportNumber'] = $event">
+						</div>
+						<div class="detail-item" *ngIf="designationMeta.sourceLocale || editing">
+							<span class="detail-label">Source Locale</span>
+							<span class="detail-value mono" *ngIf="!editing">{{ designationMeta.sourceLocale }}</span>
+							<input *ngIf="editing" class="edit-input" type="text"
+								[ngModel]="editValues['SourceLocale']"
+								(ngModelChange)="editValues['SourceLocale'] = $event">
+						</div>
+						<div class="detail-item span-2" *ngIf="designationMeta.notes || editing">
+							<span class="detail-label">Notes</span>
+							<span class="detail-value" *ngIf="!editing">{{ designationMeta.notes }}</span>
+							<textarea *ngIf="editing" class="edit-textarea"
+								[ngModel]="editValues['Notes']"
+								(ngModelChange)="editValues['Notes'] = $event"></textarea>
 						</div>
 					</div>
 
@@ -662,11 +676,13 @@ export class FolderMetadataCardComponent {
 		this.editValues = {};
 
 		if (this.designationMeta) {
-			this.editValues['BaseDesignation'] = this.designationMeta.baseDesignation;
+			this.editValues['DesignationNumber'] = this.designationMeta.baseDesignation;
 			this.editValues['Organization'] = this.designationMeta.organization;
 			this.editValues['Committee'] = this.designationMeta.committee;
 			this.editValues['HomeEditor'] = this.designationMeta.homeEditor;
 			this.editValues['ReportNumber'] = this.designationMeta.reportNumber || '';
+			this.editValues['SourceLocale'] = this.designationMeta.sourceLocale || '';
+			this.editValues['Notes'] = this.designationMeta.notes || '';
 		} else if (this.datedVersionMeta) {
 			this.editValues['StandardTitle'] = this.datedVersionMeta.standardTitle;
 			this.editValues['ActionType'] = this.datedVersionMeta.actionType;

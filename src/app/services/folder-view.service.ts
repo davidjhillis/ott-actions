@@ -512,13 +512,15 @@ export class FolderViewService {
 		switch (schema) {
 			case 'DesignationCollection':
 				return {
-					baseDesignation: el['BaseDesignation'] || el['Designation'] || pageData.Name || '',
+					baseDesignation: el['DesignationNumber'] || el['BaseDesignation'] || el['Designation'] || pageData.Name || '',
 					organization: el['Organization'] || attr['Organization'] || '',
 					committee: el['Committee'] || attr['Committee'] || '',
 					committeeCode: el['CommitteeCode'] || attr['CommitteeCode'] || '',
 					homeEditor: el['HomeEditor'] || attr['HomeEditor'] || '',
 					homeEditorEmail: el['HomeEditorEmail'] || attr['HomeEditorEmail'] || '',
 					reportNumber: el['ReportNumber'] || attr['ReportNumber'],
+					sourceLocale: el['SourceLocale'] || attr['SourceLocale'] || '',
+					notes: el['Notes'] || attr['Notes'] || '',
 					translationMaintenance: this.extractTranslationMaintenance(el)
 				};
 
@@ -715,12 +717,14 @@ export class FolderViewService {
 
 		// Demo page fields for dynamic rendering
 		const pageFields: CmsPageField[] = [
-			{ name: 'BaseDesignation', value: 'E0008_E0008M', type: 'text', label: 'Base Designation' },
+			{ name: 'DesignationNumber', value: 'E0008_E0008M', type: 'text', label: 'Designation Number' },
 			{ name: 'Organization', value: 'ASTM International', type: 'text', label: 'Organization' },
 			{ name: 'Committee', value: 'E28 — Mechanical Testing', type: 'text', label: 'Committee' },
 			{ name: 'HomeEditor', value: 'Emilie Whealen', type: 'text', label: 'Home Editor' },
 			{ name: 'HomeEditorEmail', value: 'ewhealen@astm.org', type: 'link', label: 'Home Editor Email' },
 			{ name: 'ReportNumber', value: 'RPT-2025-0042', type: 'text', label: 'Report Number' },
+			{ name: 'SourceLocale', value: 'en-US', type: 'text', label: 'Source Locale' },
+			{ name: 'Notes', value: 'Demo designation collection for tension testing', type: 'text', label: 'Notes' },
 			{
 				name: 'TranslationMaintenance',
 				value: metadata.translationMaintenance,
