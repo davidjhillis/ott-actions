@@ -25,6 +25,8 @@ export class MainComponentService extends ComponentBase {
 	private actionPanelRef?: ComponentRef<ActionBarComponent>;
 	private folderViewRef?: ComponentRef<EnhancedFolderViewComponent>;
 	private fileBarRef?: ComponentRef<AssetFileBarComponent>;
+	/** Stored original style of assetpane-hub so we can restore on file bar destroy */
+	private hubOriginalStyle?: string;
 
 	// Panel toggle event
 	public onPanelToggle: EventEmitter<any> = new EventEmitter<any>();
@@ -323,9 +325,8 @@ export class MainComponentService extends ComponentBase {
 	 * Injects the File Bar into the CMS main content area.
 	 * Called when a file asset (non-folder) is selected.
 	 *
-	 * Strategy: find the best injection point in the CMS DOM, trying
-	 * multiple selectors since file asset views may use different
-	 * containers than folder views.
+	 * Inserts the bar as a SIBLING before assetpane-hub (not inside it),
+	 * because assetpane-hub uses absolute positioning that hides child insertions.
 	 */
 	public injectFileBar(): void {
 		const ctx = this.assetContextService.getCurrentContext();
@@ -337,45 +338,35 @@ export class MainComponentService extends ComponentBase {
 		const topWindow = window.top as any;
 		if (!topWindow) return;
 
-		// Try multiple injection strategies in order of preference:
-		// 1. assetpane-hub — the primary asset content container
-		// 2. The right-side split-area (second one in the split container)
-		// 3. #globalTabContainer as a broad fallback
-		const selectors = [
-			'assetpane-hub',
-			'#globalTabContainer .splitcontainer split split-area:last-of-type',
-			'#globalTabContainer .splitcontainer split split-area + split-area',
-			'#globalTabContainer'
-		];
-
-		let container: HTMLElement | null = null;
-		let selectorUsed = '';
-		for (const sel of selectors) {
-			container = topWindow.document.querySelector(sel) as HTMLElement;
-			if (container) {
-				selectorUsed = sel;
-				break;
-			}
-		}
-
-		if (!container) {
-			console.warn('[IGX-OTT] Could not find any injection container for file bar');
+		// Find assetpane-hub and insert BEFORE it as a sibling.
+		// assetpane-hub uses absolute/flex positioning internally,
+		// so inserting inside it hides our bar.
+		const hub = topWindow.document.querySelector('assetpane-hub') as HTMLElement;
+		if (!hub?.parentElement) {
+			console.warn('[IGX-OTT] Could not find <assetpane-hub> or its parent for file bar');
 			return;
 		}
+
+		const parent = hub.parentElement;
 
 		// Create host element
 		const host = topWindow.document.createElement('div');
 		host.id = 'igx-ott-file-bar';
-		host.style.cssText = 'position:relative;z-index:10;width:100%;';
+		host.style.cssText = 'position:relative;z-index:10;width:100%;flex-shrink:0;';
 
-		// Insert as first child of the container
-		container.insertBefore(host, container.firstChild);
+		// Insert before assetpane-hub in the parent (split-area)
+		parent.insertBefore(host, hub);
+
+		// Shrink assetpane-hub to make room — it likely uses height:100%
+		// Store original style so we can restore on destroy
+		this.hubOriginalStyle = hub.style.cssText;
+		hub.style.cssText += ';height:calc(100% - 44px) !important;flex:1 1 auto;';
 
 		// Create the File Bar component
 		this.fileBarRef = this.dynamicComponentService.createComponent(AssetFileBarComponent, host);
 		this.fileBarRef.instance.context = ctx;
 
-		console.log(`[IGX-OTT] File Bar injected for: ${ctx.name} (${ctx.id}) [container: ${selectorUsed}]`);
+		console.log(`[IGX-OTT] File Bar injected before <assetpane-hub> for: ${ctx.name} (${ctx.id})`);
 	}
 
 	/**
@@ -386,7 +377,7 @@ export class MainComponentService extends ComponentBase {
 	}
 
 	/**
-	 * Destroys the File Bar if present
+	 * Destroys the File Bar if present and restores assetpane-hub styling
 	 */
 	private destroyFileBarInternal(): void {
 		if (this.fileBarRef) {
@@ -394,6 +385,16 @@ export class MainComponentService extends ComponentBase {
 			this.dynamicComponentService.destroyComponent(this.fileBarRef.instance);
 			host?.remove();
 			this.fileBarRef = undefined;
+
+			// Restore assetpane-hub original style
+			if (this.hubOriginalStyle !== undefined) {
+				const topWindow = window.top as any;
+				const hub = topWindow?.document?.querySelector('assetpane-hub') as HTMLElement;
+				if (hub) {
+					hub.style.cssText = this.hubOriginalStyle;
+				}
+				this.hubOriginalStyle = undefined;
+			}
 		}
 	}
 

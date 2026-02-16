@@ -167,6 +167,8 @@ export class AssetContextService implements OnDestroy {
 
 	/**
 	 * Resolve a DAM asset by ID (URL format: a_17 → API format: a/17).
+	 * Reads asset name synchronously from NG_REF.currentContent.Model first,
+	 * then tries the async GetAssetInfo call for full metadata.
 	 */
 	private resolveAsset(urlId: string): void {
 		if (urlId === this.currentXid) return;
@@ -175,6 +177,12 @@ export class AssetContextService implements OnDestroy {
 		// Convert URL format (a_17) to API format (a/17)
 		const apiId = urlId.replace('_', '/');
 
+		// Try sync read from NG_REF with a short delay for CMS to update the model.
+		// Also attempt the async GetAssetInfo as fallback.
+		const gen = this.navGeneration;
+		this.tryReadAssetFromNgRef(apiId, urlId, gen, 0);
+
+		// Async fallback: call GetAssetInfo via postMessage (may fail in some CMS versions)
 		this.cms.callService<any>({
 			service: 'AssetServices',
 			action: 'GetAssetInfo',
@@ -204,6 +212,36 @@ export class AssetContextService implements OnDestroy {
 				console.log(`[IGX-OTT] Asset context (fallback): ${urlId}`);
 			}
 		});
+	}
+
+	/**
+	 * Attempt to read asset metadata from NG_REF.currentContent.Model.
+	 * Retries up to 1s (5 x 200ms) for CMS to populate the model.
+	 * If the model has a name, emits an enriched context (overriding the
+	 * fallback `a_85` name from the async error path).
+	 */
+	private tryReadAssetFromNgRef(apiId: string, urlId: string, gen: number, attempt: number): void {
+		if (gen !== this.navGeneration) return;
+
+		const model = (window.top as any)?.NG_REF?.currentContent?.Model?._value;
+		const name = model?.Name || model?.FileName;
+
+		if (name) {
+			const ctx: AssetContext = {
+				id: apiId,
+				name,
+				isFolder: false,
+				path: model?.Path || model?.FolderPath || '',
+				schema: model?.SchemaName || model?.AssetType || 'Asset',
+				workflowStatus: model?.WorkflowStatus || undefined,
+				parentId: model?.FolderId || model?.ParentId || undefined,
+			};
+			this.contextSubject.next(ctx);
+			console.log(`[IGX-OTT] Asset context (NG_REF): ${name} (${apiId})`);
+		} else if (attempt < 5) {
+			setTimeout(() => this.tryReadAssetFromNgRef(apiId, urlId, gen, attempt + 1), 200);
+		}
+		// If all retries fail, the async GetAssetInfo (or its error fallback) handles it
 	}
 
 	/**
