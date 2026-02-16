@@ -168,29 +168,28 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 	private fileBarPollGen = 0;
 
 	/**
-	 * Polls for the CMS Download/Upload buttons to render, then injects
-	 * the "Open in Word" button next to them. Retries every 300ms up to 6s
-	 * to handle variable CMS render timing.
+	 * Polls for <assetpane-hub> to render, then injects the file bar
+	 * Angular component as its first child. Retries every 300ms up to 6s.
 	 */
 	private waitForAssetPaneThenInjectFileBar(): void {
 		const gen = ++this.fileBarPollGen;
-		this.pollForCmsButtons(gen, 0);
+		this.pollForAssetHub(gen, 0);
 	}
 
-	private pollForCmsButtons(gen: number, elapsed: number): void {
+	private pollForAssetHub(gen: number, elapsed: number): void {
 		if (gen !== this.fileBarPollGen) return; // stale poll
 
 		const maxWait = 6000;
 		const interval = 300;
 
-		// Try injection — returns true if it succeeded
+		// Try injection — returns true if it succeeded or is not applicable
 		const success = this.mainComponentService.injectFileBar();
 		if (success) return;
 
 		if (elapsed < maxWait) {
-			setTimeout(() => this.pollForCmsButtons(gen, elapsed + interval), interval);
+			setTimeout(() => this.pollForAssetHub(gen, elapsed + interval), interval);
 		} else {
-			console.warn('[IGX-OTT] Timed out waiting for CMS buttons for Open in Word injection');
+			console.warn('[IGX-OTT] Timed out waiting for assetpane-hub for file bar injection');
 		}
 	}
 

@@ -25,8 +25,6 @@ export class MainComponentService extends ComponentBase {
 	private actionPanelRef?: ComponentRef<ActionBarComponent>;
 	private folderViewRef?: ComponentRef<EnhancedFolderViewComponent>;
 	private fileBarRef?: ComponentRef<AssetFileBarComponent>;
-	/** Stored original style of assetpane-hub so we can restore on file bar destroy */
-	private hubOriginalStyle?: string;
 
 	// Panel toggle event
 	public onPanelToggle: EventEmitter<any> = new EventEmitter<any>();
@@ -321,146 +319,42 @@ export class MainComponentService extends ComponentBase {
 		return this.folderViewRef;
 	}
 
-	/** Reference to the injected "Open in Word" button element */
-	private openInWordBtn?: HTMLElement;
-
 	/**
-	 * Injects an "Open in Word" (or appropriate app) button into the CMS
-	 * asset button area — next to the existing "Upload New" / "Download" buttons.
+	 * Injects the AssetFileBarComponent into the CMS asset detail view
+	 * using the same Angular component injection pattern as injectEnhancedFolderView().
 	 *
-	 * Returns true if injection succeeded, false if the CMS buttons haven't
-	 * rendered yet (caller should retry).
+	 * Finds <assetpane-hub> (the CMS asset container), creates a host div
+	 * as its first child, and renders the Angular component into it.
+	 *
+	 * Returns true if injection succeeded (or not applicable), false if
+	 * assetpane-hub hasn't rendered yet (caller should retry).
 	 */
 	public injectFileBar(): boolean {
 		const ctx = this.assetContextService.getCurrentContext();
 		if (!ctx || ctx.isFolder) return true; // not applicable, don't retry
 
 		// Don't re-inject if already present
-		if (this.openInWordBtn) return true;
+		if (this.fileBarRef) return true;
 
 		const topWindow = window.top as any;
 		if (!topWindow) return true;
 
-		// Resolve file extension → app mapping
-		const name = ctx.name || '';
-		const dotIdx = name.lastIndexOf('.');
-		const ext = dotIdx > 0 ? name.substring(dotIdx).toLowerCase() : '';
+		// Find assetpane-hub — the CMS asset detail container.
+		// Same approach as injectEnhancedFolderView uses with <folder-view>.
+		const hub = topWindow.document.querySelector('assetpane-hub') as HTMLElement;
+		if (!hub) return false; // not rendered yet — retry
 
-		const officeMap: Record<string, { app: string; uri: string }> = {
-			'.docx': { app: 'Word', uri: 'ms-word:ofe|u|' },
-			'.doc':  { app: 'Word', uri: 'ms-word:ofe|u|' },
-			'.rtf':  { app: 'Word', uri: 'ms-word:ofe|u|' },
-			'.xlsx': { app: 'Excel', uri: 'ms-excel:ofe|u|' },
-			'.xls':  { app: 'Excel', uri: 'ms-excel:ofe|u|' },
-			'.csv':  { app: 'Excel', uri: 'ms-excel:ofe|u|' },
-			'.pptx': { app: 'PowerPoint', uri: 'ms-powerpoint:ofe|u|' },
-			'.ppt':  { app: 'PowerPoint', uri: 'ms-powerpoint:ofe|u|' },
-		};
-		const mapping = officeMap[ext];
-		if (!mapping) return true; // not an Office file, don't retry
+		// Create host element as first child of assetpane-hub
+		const host = topWindow.document.createElement('div');
+		host.id = 'igx-ott-file-bar';
+		host.style.cssText = 'position:relative;z-index:10;width:100%;';
+		hub.insertBefore(host, hub.firstChild);
 
-		// Find the CMS button area by searching ALL elements for "Download" or
-		// "Upload New" text. CMS may render these as divs, spans, a, button, etc.
-		let targetEl: HTMLElement | null = null;
-		const walker = topWindow.document.createTreeWalker(
-			topWindow.document.body,
-			NodeFilter.SHOW_ELEMENT,
-			null
-		);
-		while (walker.nextNode()) {
-			const el = walker.currentNode as HTMLElement;
-			// Only check leaf-level elements (no deep nesting matches)
-			const text = el.textContent?.trim();
-			if ((text === 'Download' || text === 'Upload New') && el.children.length === 0) {
-				targetEl = el;
-				break;
-			}
-		}
+		// Create the Angular component via DynamicComponentService
+		this.fileBarRef = this.dynamicComponentService.createComponent(AssetFileBarComponent, host);
+		this.fileBarRef.instance.context = ctx;
 
-		if (!targetEl?.parentElement) {
-			return false; // CMS hasn't rendered buttons yet — retry
-		}
-
-		// Walk up to find the container that holds both buttons.
-		// The direct parent might be a wrapper around a single button,
-		// so go up until we find a container with multiple children.
-		let container = targetEl.parentElement;
-		while (container && container.children.length <= 1 && container.parentElement) {
-			container = container.parentElement;
-		}
-
-		// Read the download URL from the CMS Download link/button
-		let downloadUrl = '';
-		const allLinks = container.querySelectorAll('a[href]');
-		for (const link of allLinks) {
-			const text = (link as HTMLElement).textContent?.trim();
-			if (text === 'Download') {
-				downloadUrl = (link as HTMLAnchorElement).href || '';
-				break;
-			}
-		}
-		// Fallback: construct from CMS base + current URL path
-		if (!downloadUrl) {
-			// Try reading the "Current URL" field from the page
-			const allLabels = topWindow.document.querySelectorAll('*');
-			for (const el of allLabels) {
-				if ((el as HTMLElement).textContent?.includes('~/') && (el as HTMLElement).children.length === 0) {
-					const urlText = (el as HTMLElement).textContent?.trim();
-					if (urlText?.startsWith('~/')) {
-						const cleanPath = urlText.replace(/^~\//, '');
-						const baseUrl = topWindow.location?.origin || '';
-						downloadUrl = `${baseUrl}/dhillis/${cleanPath}`;
-						break;
-					}
-				}
-			}
-		}
-
-		if (!downloadUrl) {
-			console.warn('[IGX-OTT] Could not determine download URL — injecting without URL');
-		}
-
-		// Create the "Open in Word" button, matching CMS button styling
-		const btn = topWindow.document.createElement('a');
-		btn.id = 'igx-ott-open-in-word';
-		btn.textContent = `Open in ${mapping.app}`;
-		btn.href = 'javascript:void(0)';
-		btn.style.cssText = [
-			'display: block',
-			'width: 100%',
-			'padding: 8px 16px',
-			'margin-bottom: 5px',
-			'background: #2563eb',
-			'color: #fff',
-			'text-align: center',
-			'border-radius: 3px',
-			'font-size: 13px',
-			'font-family: inherit',
-			'font-weight: 500',
-			'cursor: pointer',
-			'text-decoration: none',
-			'box-sizing: border-box',
-		].join(';');
-
-		btn.addEventListener('click', (e: Event) => {
-			e.preventDefault();
-			if (!downloadUrl) {
-				console.warn('[IGX-OTT] No download URL available');
-				return;
-			}
-			const uri = mapping.uri + encodeURI(downloadUrl);
-			console.log(`[IGX-OTT] Opening in ${mapping.app}: ${uri}`);
-			topWindow.open(uri, '_self');
-		});
-
-		btn.addEventListener('mouseenter', () => { btn.style.background = '#1d4ed8'; });
-		btn.addEventListener('mouseleave', () => { btn.style.background = '#2563eb'; });
-
-		// Insert as first child of the button container (above Upload New / Download)
-		container.insertBefore(btn, container.firstChild);
-		this.openInWordBtn = btn;
-
-		console.log(`[IGX-OTT] "Open in ${mapping.app}" button injected, URL: ${downloadUrl}`);
+		console.log(`[IGX-OTT] File bar injected into assetpane-hub for: ${ctx.name} (${ctx.id})`);
 		return true;
 	}
 
@@ -472,27 +366,14 @@ export class MainComponentService extends ComponentBase {
 	}
 
 	/**
-	 * Destroys the Open in Word button if present
+	 * Destroys the file bar Angular component if present
 	 */
 	private destroyFileBarInternal(): void {
-		if (this.openInWordBtn) {
-			this.openInWordBtn.remove();
-			this.openInWordBtn = undefined;
-		}
-		// Also clean up the Angular component if it was used
 		if (this.fileBarRef) {
 			const host = this.fileBarRef.location.nativeElement;
 			this.dynamicComponentService.destroyComponent(this.fileBarRef.instance);
 			host?.remove();
 			this.fileBarRef = undefined;
-		}
-		if (this.hubOriginalStyle !== undefined) {
-			const topWindow = window.top as any;
-			const hub = topWindow?.document?.querySelector('assetpane-hub') as HTMLElement;
-			if (hub) {
-				hub.style.cssText = this.hubOriginalStyle;
-			}
-			this.hubOriginalStyle = undefined;
 		}
 	}
 

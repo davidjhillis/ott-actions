@@ -214,6 +214,15 @@ export class AssetContextService implements OnDestroy {
 			return;
 		}
 
+		// Diagnostic: log model keys to help identify download URL property
+		console.log('[IGX-OTT] NG_REF model keys:', Object.keys(model || {}));
+		console.log('[IGX-OTT] NG_REF model URL-related:', {
+			Path: model?.Path, FolderPath: model?.FolderPath, CurrentUrl: model?.CurrentUrl,
+			Url: model?.Url, DownloadUrl: model?.DownloadUrl, AssetUrl: model?.AssetUrl,
+			ContentUrl: model?.ContentUrl, FilePath: model?.FilePath, Source: model?.Source,
+			Link: model?.Link, Href: model?.Href, OriginalUrl: model?.OriginalUrl,
+		});
+
 		// Resolve the full filename WITH extension
 		const fullName = this.resolveAssetFileName(model, displayName);
 		const path = model?.Path || model?.FolderPath || model?.CurrentUrl || '';

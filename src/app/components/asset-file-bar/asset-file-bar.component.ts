@@ -41,16 +41,15 @@ const EXT_MAP: Record<string, AppMapping> = {
 	standalone: true,
 	imports: [CommonModule, LucideIconComponent],
 	template: `
-		<div class="afb" *ngIf="context">
+		<div class="afb" *ngIf="context && appMapping">
 			<!-- File info -->
 			<div class="afb-info">
 				<ott-icon [name]="fileIcon" [size]="18" color="var(--ott-text-secondary, #6b7280)"></ott-icon>
 				<span class="afb-name" [title]="context.name">{{ context.name }}</span>
 				<span class="afb-meta" *ngIf="extension">{{ extension }}</span>
-				<span class="afb-meta" *ngIf="context.schema && context.schema !== 'Asset'">{{ context.schema }}</span>
 			</div>
 
-			<!-- Actions -->
+			<!-- Actions — CMS already has Download, we only add Open in App -->
 			<div class="afb-actions">
 				<button class="afb-btn afb-btn-primary" *ngIf="appMapping?.uriPrefix" (click)="openInApp()" [title]="'Open in ' + appMapping!.app">
 					<ott-icon name="external-link" [size]="14"></ott-icon>
@@ -59,10 +58,6 @@ const EXT_MAP: Record<string, AppMapping> = {
 				<button class="afb-btn afb-btn-primary" *ngIf="appMapping && !appMapping.uriPrefix && appMapping.app === 'Browser'" (click)="openInBrowser()" title="Open in browser">
 					<ott-icon name="external-link" [size]="14"></ott-icon>
 					Open
-				</button>
-				<button class="afb-btn" (click)="download()" title="Download file">
-					<ott-icon name="download" [size]="14"></ott-icon>
-					Download
 				</button>
 			</div>
 		</div>
@@ -172,19 +167,62 @@ export class AssetFileBarComponent {
 		this.fileIcon = this.appMapping?.icon || 'file';
 	}
 
+	/**
+	 * Resolves the asset download URL.
+	 * Called at click time (not render time) so CMS has fully rendered.
+	 *
+	 * Strategy:
+	 *   1. context.path if available
+	 *   2. Find the CMS Download link inside assetpane-hub
+	 *   3. Fallback: construct from CMS instance path + asset ID
+	 */
 	private getDownloadUrl(): string {
 		if (!this.context) return '';
-		// Build download URL from context path or ID
-		// CMS pattern: assets are served at the base CMS URL + asset path
+
+		// 1. Use context path if available
 		const path = this.context.path;
 		if (path) {
-			// Use the CMS base URL from the top window location
 			const baseUrl = (window.top as any)?.location?.origin || '';
-			return `${baseUrl}/assets/${path.replace(/^\//, '')}`;
+			return `${baseUrl}/${path.replace(/^[~\/]+/, '')}`;
 		}
-		// Fallback: construct from asset ID (a/85 → asset download endpoint)
+
+		// 2. Find the CMS Download link in the DOM.
+		//    By click time the CMS buttons will have rendered.
+		const topWindow = window.top as any;
+		if (topWindow?.document) {
+			const hub = topWindow.document.querySelector('assetpane-hub');
+			if (hub) {
+				// Search <a> tags with "Download" text
+				const anchors = hub.querySelectorAll('a[href]');
+				for (let i = 0; i < anchors.length; i++) {
+					const a = anchors[i] as HTMLAnchorElement;
+					const text = a.textContent?.trim();
+					if (text === 'Download' || text?.toLowerCase() === 'download') {
+						if (a.href && !a.href.includes('javascript:')) {
+							console.log(`[IGX-OTT] Found CMS Download URL: ${a.href}`);
+							return a.href;
+						}
+					}
+				}
+				// Also try buttons that might have download hrefs
+				const buttons = hub.querySelectorAll('[href]');
+				for (let i = 0; i < buttons.length; i++) {
+					const el = buttons[i] as HTMLElement;
+					const href = el.getAttribute('href') || '';
+					if (href.toLowerCase().includes('download') && !href.includes('javascript:')) {
+						console.log(`[IGX-OTT] Found CMS Download href: ${href}`);
+						return href;
+					}
+				}
+			}
+		}
+
+		// 3. Fallback: construct from CMS instance path + asset ID
 		const baseUrl = (window.top as any)?.location?.origin || '';
-		return `${baseUrl}/api/AssetServices/GetAssetContent/${this.context.id}`;
+		const instancePath = (window.top as any)?.location?.pathname?.replace(/\/$/, '') || '';
+		const fallbackUrl = `${baseUrl}${instancePath}/api/content/${this.context.id}`;
+		console.warn(`[IGX-OTT] Could not find CMS Download link, fallback: ${fallbackUrl}`);
+		return fallbackUrl;
 	}
 
 	openInApp(): void {
@@ -203,18 +241,4 @@ export class AssetFileBarComponent {
 		(window.top as any)?.open(downloadUrl, '_blank');
 	}
 
-	download(): void {
-		const downloadUrl = this.getDownloadUrl();
-		if (!downloadUrl) return;
-		console.log(`[IGX-OTT] Downloading: ${downloadUrl}`);
-		const a = (window.top as any)?.document?.createElement('a');
-		if (a) {
-			a.href = downloadUrl;
-			a.download = this.context?.name || 'file';
-			a.style.display = 'none';
-			(window.top as any).document.body.appendChild(a);
-			a.click();
-			a.remove();
-		}
-	}
 }
