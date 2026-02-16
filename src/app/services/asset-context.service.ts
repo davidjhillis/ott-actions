@@ -214,14 +214,18 @@ export class AssetContextService implements OnDestroy {
 			return;
 		}
 
-		// Diagnostic: log model keys to help identify download URL property
-		console.log('[IGX-OTT] NG_REF model keys:', Object.keys(model || {}));
-		console.log('[IGX-OTT] NG_REF model URL-related:', {
-			Path: model?.Path, FolderPath: model?.FolderPath, CurrentUrl: model?.CurrentUrl,
-			Url: model?.Url, DownloadUrl: model?.DownloadUrl, AssetUrl: model?.AssetUrl,
-			ContentUrl: model?.ContentUrl, FilePath: model?.FilePath, Source: model?.Source,
-			Link: model?.Link, Href: model?.Href, OriginalUrl: model?.OriginalUrl,
-		});
+		// Diagnostic: dump ALL model key-value pairs (strings only) for download URL identification
+		const modelKeys = Object.keys(model || {});
+		console.log('[IGX-OTT] NG_REF model keys (' + modelKeys.length + '):', modelKeys.join(', '));
+		const modelDump: Record<string, any> = {};
+		for (const key of modelKeys) {
+			const val = model[key];
+			// Only log primitives and short strings (skip observables/objects)
+			if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' || val === null) {
+				modelDump[key] = val;
+			}
+		}
+		console.log('[IGX-OTT] NG_REF model values:', JSON.stringify(modelDump, null, 2));
 
 		// Resolve the full filename WITH extension
 		const fullName = this.resolveAssetFileName(model, displayName);

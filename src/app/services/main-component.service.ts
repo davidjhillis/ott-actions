@@ -421,46 +421,74 @@ export class MainComponentService extends ComponentBase {
 	 * Resolves the download URL for the current asset.
 	 * Called at click time so CMS DOM is fully rendered.
 	 *
+	 * The CMS preview URL (dsspreview/amd/{id}) returns HTML, not the file.
+	 * We need the actual file URL for Word to open the .docx.
+	 *
 	 * Strategy:
-	 *   1. NG_REF model path properties (Path, CurrentUrl, etc.)
-	 *   2. Search DOM for <a> tags with download-related hrefs
-	 *   3. Fallback: CMS instance path + asset ID
+	 *   1. NG_REF model — look for any string property containing a file path
+	 *   2. Convert dsspreview URL → dss URL (raw file instead of preview wrapper)
+	 *   3. Fallback: CMS instance path + dss/amd/{numericId}
 	 */
 	private resolveAssetDownloadUrl(ctx: AssetContext): string {
 		const topWindow = window.top as any;
 		if (!topWindow) return '';
+		const baseUrl = topWindow.location?.origin || '';
+		const instancePath = topWindow.location?.pathname?.replace(/\/$/, '') || '';
 
-		// 1. Try NG_REF model for path/URL properties
+		// 1. Try NG_REF model for path/URL string properties
 		const model = topWindow.NG_REF?.currentContent?.Model?._value;
 		if (model) {
-			const path = model.Path || model.CurrentUrl || model.Url
-				|| model.DownloadUrl || model.AssetUrl || model.FilePath || '';
-			if (path) {
-				const cleanPath = path.replace(/^~\//, '');
-				const baseUrl = topWindow.location?.origin || '';
-				const instancePath = topWindow.location?.pathname?.replace(/\/$/, '') || '';
-				return `${baseUrl}${instancePath}/${cleanPath}`;
+			// Check all string properties for anything that looks like a file path
+			const urlCandidateKeys = [
+				'Path', 'CurrentUrl', 'Url', 'DownloadUrl', 'AssetUrl',
+				'FilePath', 'Source', 'ContentUrl', 'OriginalUrl', 'Link',
+				'Href', 'FileUrl', 'ResourceUrl', 'AbsoluteUrl', 'RelativeUrl'
+			];
+			for (const key of urlCandidateKeys) {
+				const val = model[key];
+				if (typeof val === 'string' && val.length > 0) {
+					console.log(`[IGX-OTT] Model.${key} = "${val}"`);
+					const cleanPath = val.replace(/^~\//, '');
+					return `${baseUrl}${instancePath}/${cleanPath}`;
+				}
 			}
+
+			// Also dump ALL string values to console for diagnosis
+			const allStrings: Record<string, string> = {};
+			for (const key of Object.keys(model)) {
+				const v = model[key];
+				if (typeof v === 'string' && v.length > 0 && v.length < 500) {
+					allStrings[key] = v;
+				}
+			}
+			console.log('[IGX-OTT] All model string values:', JSON.stringify(allStrings, null, 2));
 		}
 
-		// 2. Search assetpane-hub for <a> tags with hrefs
+		// 2. Find <a> in assetpane-hub and convert dsspreview → dss for raw file
 		const hub = topWindow.document.querySelector('assetpane-hub');
 		if (hub) {
 			const anchors = hub.querySelectorAll('a[href]');
 			for (let i = 0; i < anchors.length; i++) {
 				const a = anchors[i] as HTMLAnchorElement;
 				if (a.href && !a.href.includes('javascript:') && !a.href.includes('#')) {
-					console.log(`[IGX-OTT] Found potential download URL: ${a.href}`);
-					return a.href;
+					let url = a.href;
+					// Convert preview URL to raw download URL
+					// dsspreview/amd/85 → dss/amd/85 (raw file, not HTML preview)
+					if (url.includes('/dsspreview/')) {
+						url = url.replace('/dsspreview/', '/dss/');
+						console.log(`[IGX-OTT] Converted preview → raw URL: ${url}`);
+					} else {
+						console.log(`[IGX-OTT] Found <a> URL: ${url}`);
+					}
+					return url;
 				}
 			}
 		}
 
-		// 3. Fallback
-		const baseUrl = topWindow.location?.origin || '';
-		const instancePath = topWindow.location?.pathname?.replace(/\/$/, '') || '';
-		const fallbackUrl = `${baseUrl}${instancePath}/api/content/${ctx.id}`;
-		console.warn(`[IGX-OTT] Using fallback URL: ${fallbackUrl}`);
+		// 3. Fallback: construct dss URL from asset ID
+		const numericId = ctx.id.replace(/[^0-9]/g, '');
+		const fallbackUrl = `${baseUrl}${instancePath}/dss/amd/${numericId}`;
+		console.warn(`[IGX-OTT] Using fallback dss URL: ${fallbackUrl}`);
 		return fallbackUrl;
 	}
 
