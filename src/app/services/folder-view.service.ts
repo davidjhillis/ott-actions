@@ -469,15 +469,25 @@ export class FolderViewService {
 			return of(true);
 		}
 
+		// Optimistically update local view data with new values immediately.
+		// The CMS preview/page-xml may return stale (committed) content after save,
+		// so we apply the edits locally to keep the UI in sync.
+		const current = this.viewDataSubject.value;
+		if (current?.rawPageData?.Elements) {
+			for (const el of elements) {
+				current.rawPageData.Elements[el.name] = el.value;
+			}
+			const metadata = this.extractTypedMetadata(current.schema, current.rawPageData);
+			const pageFields = this.cmsApi.parsePageFields(current.rawPageData);
+			this.viewDataSubject.next({
+				...current,
+				metadata: metadata || current.metadata,
+				pageFields: pageFields.length > 0 ? pageFields : current.pageFields
+			});
+		}
+
 		return this.metadataLookup.saveElements(metadataPageId, elements).pipe(
 			map(() => true),
-			tap(() => {
-				// Refresh metadata after save
-				const current = this.viewDataSubject.value;
-				if (current) {
-					this.loadMetadataFromSiteTree(metadataPageId, current.schema, current);
-				}
-			}),
 			catchError(() => of(false))
 		);
 	}
