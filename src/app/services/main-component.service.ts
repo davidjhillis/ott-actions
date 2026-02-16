@@ -328,25 +328,24 @@ export class MainComponentService extends ComponentBase {
 	 * Injects an "Open in Word" (or appropriate app) button into the CMS
 	 * asset button area — next to the existing "Upload New" / "Download" buttons.
 	 *
-	 * Reads the download URL from the existing CMS Download button/link
-	 * so we use the exact same URL the CMS uses.
+	 * Returns true if injection succeeded, false if the CMS buttons haven't
+	 * rendered yet (caller should retry).
 	 */
-	public injectFileBar(): void {
+	public injectFileBar(): boolean {
 		const ctx = this.assetContextService.getCurrentContext();
-		if (!ctx || ctx.isFolder) return;
+		if (!ctx || ctx.isFolder) return true; // not applicable, don't retry
 
-		// Destroy existing button if present
-		this.destroyFileBarInternal();
+		// Don't re-inject if already present
+		if (this.openInWordBtn) return true;
 
 		const topWindow = window.top as any;
-		if (!topWindow) return;
+		if (!topWindow) return true;
 
 		// Resolve file extension → app mapping
 		const name = ctx.name || '';
 		const dotIdx = name.lastIndexOf('.');
 		const ext = dotIdx > 0 ? name.substring(dotIdx).toLowerCase() : '';
 
-		// Map of extensions to Office app info
 		const officeMap: Record<string, { app: string; uri: string }> = {
 			'.docx': { app: 'Word', uri: 'ms-word:ofe|u|' },
 			'.doc':  { app: 'Word', uri: 'ms-word:ofe|u|' },
@@ -358,48 +357,67 @@ export class MainComponentService extends ComponentBase {
 			'.ppt':  { app: 'PowerPoint', uri: 'ms-powerpoint:ofe|u|' },
 		};
 		const mapping = officeMap[ext];
-		if (!mapping) {
-			console.log(`[IGX-OTT] No Office app mapping for extension "${ext}" — skipping Open in App button`);
-			return;
-		}
+		if (!mapping) return true; // not an Office file, don't retry
 
-		// Find the CMS button area: look for the "Download" button by text,
-		// then use its parent container as the injection point.
-		const allButtons = topWindow.document.querySelectorAll('a, button');
-		let downloadBtn: HTMLElement | null = null;
-		for (const el of allButtons) {
-			const text = (el as HTMLElement).textContent?.trim();
-			if (text === 'Download' || text === 'Upload New') {
-				downloadBtn = el as HTMLElement;
+		// Find the CMS button area by searching ALL elements for "Download" or
+		// "Upload New" text. CMS may render these as divs, spans, a, button, etc.
+		let targetEl: HTMLElement | null = null;
+		const walker = topWindow.document.createTreeWalker(
+			topWindow.document.body,
+			NodeFilter.SHOW_ELEMENT,
+			null
+		);
+		while (walker.nextNode()) {
+			const el = walker.currentNode as HTMLElement;
+			// Only check leaf-level elements (no deep nesting matches)
+			const text = el.textContent?.trim();
+			if ((text === 'Download' || text === 'Upload New') && el.children.length === 0) {
+				targetEl = el;
 				break;
 			}
 		}
 
-		if (!downloadBtn?.parentElement) {
-			console.warn('[IGX-OTT] Could not find CMS Download/Upload button for Open in Word injection');
-			return;
+		if (!targetEl?.parentElement) {
+			return false; // CMS hasn't rendered buttons yet — retry
 		}
 
-		const container = downloadBtn.parentElement;
+		// Walk up to find the container that holds both buttons.
+		// The direct parent might be a wrapper around a single button,
+		// so go up until we find a container with multiple children.
+		let container = targetEl.parentElement;
+		while (container && container.children.length <= 1 && container.parentElement) {
+			container = container.parentElement;
+		}
 
-		// Read the download URL from the CMS Download link
+		// Read the download URL from the CMS Download link/button
 		let downloadUrl = '';
-		for (const el of container.querySelectorAll('a, button')) {
-			if ((el as HTMLElement).textContent?.trim() === 'Download') {
-				downloadUrl = (el as HTMLAnchorElement).href || '';
+		const allLinks = container.querySelectorAll('a[href]');
+		for (const link of allLinks) {
+			const text = (link as HTMLElement).textContent?.trim();
+			if (text === 'Download') {
+				downloadUrl = (link as HTMLAnchorElement).href || '';
 				break;
 			}
 		}
-		// Fallback: construct from CMS base URL + asset path
-		if (!downloadUrl && ctx.path) {
-			const baseUrl = topWindow.location?.origin || '';
-			const cleanPath = ctx.path.replace(/^~\//, '');
-			downloadUrl = `${baseUrl}/dhillis/${cleanPath}`;
+		// Fallback: construct from CMS base + current URL path
+		if (!downloadUrl) {
+			// Try reading the "Current URL" field from the page
+			const allLabels = topWindow.document.querySelectorAll('*');
+			for (const el of allLabels) {
+				if ((el as HTMLElement).textContent?.includes('~/') && (el as HTMLElement).children.length === 0) {
+					const urlText = (el as HTMLElement).textContent?.trim();
+					if (urlText?.startsWith('~/')) {
+						const cleanPath = urlText.replace(/^~\//, '');
+						const baseUrl = topWindow.location?.origin || '';
+						downloadUrl = `${baseUrl}/dhillis/${cleanPath}`;
+						break;
+					}
+				}
+			}
 		}
 
 		if (!downloadUrl) {
-			console.warn('[IGX-OTT] Could not determine download URL for Open in Word');
-			return;
+			console.warn('[IGX-OTT] Could not determine download URL — injecting without URL');
 		}
 
 		// Create the "Open in Word" button, matching CMS button styling
@@ -426,20 +444,24 @@ export class MainComponentService extends ComponentBase {
 
 		btn.addEventListener('click', (e: Event) => {
 			e.preventDefault();
+			if (!downloadUrl) {
+				console.warn('[IGX-OTT] No download URL available');
+				return;
+			}
 			const uri = mapping.uri + encodeURI(downloadUrl);
 			console.log(`[IGX-OTT] Opening in ${mapping.app}: ${uri}`);
 			topWindow.open(uri, '_self');
 		});
 
-		// Hover effect
 		btn.addEventListener('mouseenter', () => { btn.style.background = '#1d4ed8'; });
 		btn.addEventListener('mouseleave', () => { btn.style.background = '#2563eb'; });
 
-		// Insert as first child of the button container (above Upload New)
+		// Insert as first child of the button container (above Upload New / Download)
 		container.insertBefore(btn, container.firstChild);
 		this.openInWordBtn = btn;
 
 		console.log(`[IGX-OTT] "Open in ${mapping.app}" button injected, URL: ${downloadUrl}`);
+		return true;
 	}
 
 	/**

@@ -168,36 +168,29 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 	private fileBarPollGen = 0;
 
 	/**
-	 * Polls for a CMS content container to appear, then injects the file bar.
-	 * Tries multiple selectors since file assets may use different containers
-	 * than folder views. Retries every 200ms up to 4 seconds.
+	 * Polls for the CMS Download/Upload buttons to render, then injects
+	 * the "Open in Word" button next to them. Retries every 300ms up to 6s
+	 * to handle variable CMS render timing.
 	 */
-	private waitForAssetPaneThenInjectFileBar(elapsed = 0): void {
+	private waitForAssetPaneThenInjectFileBar(): void {
 		const gen = ++this.fileBarPollGen;
-		this.pollForFileBarContainer(gen, 0);
+		this.pollForCmsButtons(gen, 0);
 	}
 
-	private pollForFileBarContainer(gen: number, elapsed: number): void {
+	private pollForCmsButtons(gen: number, elapsed: number): void {
 		if (gen !== this.fileBarPollGen) return; // stale poll
 
-		const maxWait = 4000;
-		const interval = 200;
-		const topWindow = window.top as any;
+		const maxWait = 6000;
+		const interval = 300;
 
-		// Try multiple selectors — file assets may not have assetpane-hub
-		const found = topWindow?.document?.querySelector('assetpane-hub')
-			|| topWindow?.document?.querySelector('#globalTabContainer .splitcontainer split split-area:last-of-type')
-			|| topWindow?.document?.querySelector('#globalTabContainer');
-
-		if (found) {
-			this.mainComponentService.injectFileBar();
-			return;
-		}
+		// Try injection — returns true if it succeeded
+		const success = this.mainComponentService.injectFileBar();
+		if (success) return;
 
 		if (elapsed < maxWait) {
-			setTimeout(() => this.pollForFileBarContainer(gen, elapsed + interval), interval);
+			setTimeout(() => this.pollForCmsButtons(gen, elapsed + interval), interval);
 		} else {
-			console.warn('[IGX-OTT] Timed out waiting for CMS content container for file bar');
+			console.warn('[IGX-OTT] Timed out waiting for CMS buttons for Open in Word injection');
 		}
 	}
 
