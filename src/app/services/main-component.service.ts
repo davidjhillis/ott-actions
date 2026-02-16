@@ -321,88 +321,157 @@ export class MainComponentService extends ComponentBase {
 		return this.folderViewRef;
 	}
 
+	/** Reference to the injected "Open in Word" button element */
+	private openInWordBtn?: HTMLElement;
+
 	/**
-	 * Injects the File Bar into the CMS main content area.
-	 * Called when a file asset (non-folder) is selected.
+	 * Injects an "Open in Word" (or appropriate app) button into the CMS
+	 * asset button area — next to the existing "Upload New" / "Download" buttons.
 	 *
-	 * Inserts the bar as a SIBLING before assetpane-hub (not inside it),
-	 * because assetpane-hub uses absolute positioning that hides child insertions.
+	 * Reads the download URL from the existing CMS Download button/link
+	 * so we use the exact same URL the CMS uses.
 	 */
 	public injectFileBar(): void {
 		const ctx = this.assetContextService.getCurrentContext();
 		if (!ctx || ctx.isFolder) return;
 
-		// Destroy existing file bar if present
+		// Destroy existing button if present
 		this.destroyFileBarInternal();
 
 		const topWindow = window.top as any;
 		if (!topWindow) return;
 
-		// Find assetpane-hub and insert BEFORE it as a sibling.
-		// assetpane-hub uses absolute/flex positioning internally,
-		// so inserting inside it hides our bar.
-		const hub = topWindow.document.querySelector('assetpane-hub') as HTMLElement;
-		if (!hub?.parentElement) {
-			console.warn('[IGX-OTT] Could not find <assetpane-hub> or its parent for file bar');
+		// Resolve file extension → app mapping
+		const name = ctx.name || '';
+		const dotIdx = name.lastIndexOf('.');
+		const ext = dotIdx > 0 ? name.substring(dotIdx).toLowerCase() : '';
+
+		// Map of extensions to Office app info
+		const officeMap: Record<string, { app: string; uri: string }> = {
+			'.docx': { app: 'Word', uri: 'ms-word:ofe|u|' },
+			'.doc':  { app: 'Word', uri: 'ms-word:ofe|u|' },
+			'.rtf':  { app: 'Word', uri: 'ms-word:ofe|u|' },
+			'.xlsx': { app: 'Excel', uri: 'ms-excel:ofe|u|' },
+			'.xls':  { app: 'Excel', uri: 'ms-excel:ofe|u|' },
+			'.csv':  { app: 'Excel', uri: 'ms-excel:ofe|u|' },
+			'.pptx': { app: 'PowerPoint', uri: 'ms-powerpoint:ofe|u|' },
+			'.ppt':  { app: 'PowerPoint', uri: 'ms-powerpoint:ofe|u|' },
+		};
+		const mapping = officeMap[ext];
+		if (!mapping) {
+			console.log(`[IGX-OTT] No Office app mapping for extension "${ext}" — skipping Open in App button`);
 			return;
 		}
 
-		const parent = hub.parentElement;
+		// Find the CMS button area: look for the "Download" button by text,
+		// then use its parent container as the injection point.
+		const allButtons = topWindow.document.querySelectorAll('a, button');
+		let downloadBtn: HTMLElement | null = null;
+		for (const el of allButtons) {
+			const text = (el as HTMLElement).textContent?.trim();
+			if (text === 'Download' || text === 'Upload New') {
+				downloadBtn = el as HTMLElement;
+				break;
+			}
+		}
 
-		// Create host element
-		const host = topWindow.document.createElement('div');
-		host.id = 'igx-ott-file-bar';
-		host.style.cssText = 'position:relative;z-index:10;width:100%;flex-shrink:0;';
+		if (!downloadBtn?.parentElement) {
+			console.warn('[IGX-OTT] Could not find CMS Download/Upload button for Open in Word injection');
+			return;
+		}
 
-		// Insert before assetpane-hub in the parent (split-area)
-		parent.insertBefore(host, hub);
+		const container = downloadBtn.parentElement;
 
-		// Shrink assetpane-hub to make room — it likely uses height:100%
-		// Store original style so we can restore on destroy
-		this.hubOriginalStyle = hub.style.cssText;
-		hub.style.cssText += ';height:calc(100% - 44px) !important;flex:1 1 auto;';
+		// Read the download URL from the CMS Download link
+		let downloadUrl = '';
+		for (const el of container.querySelectorAll('a, button')) {
+			if ((el as HTMLElement).textContent?.trim() === 'Download') {
+				downloadUrl = (el as HTMLAnchorElement).href || '';
+				break;
+			}
+		}
+		// Fallback: construct from CMS base URL + asset path
+		if (!downloadUrl && ctx.path) {
+			const baseUrl = topWindow.location?.origin || '';
+			const cleanPath = ctx.path.replace(/^~\//, '');
+			downloadUrl = `${baseUrl}/dhillis/${cleanPath}`;
+		}
 
-		// Create the File Bar component
-		this.fileBarRef = this.dynamicComponentService.createComponent(AssetFileBarComponent, host);
-		this.fileBarRef.instance.context = ctx;
+		if (!downloadUrl) {
+			console.warn('[IGX-OTT] Could not determine download URL for Open in Word');
+			return;
+		}
 
-		console.log(`[IGX-OTT] File Bar injected before <assetpane-hub> for: ${ctx.name} (${ctx.id})`);
+		// Create the "Open in Word" button, matching CMS button styling
+		const btn = topWindow.document.createElement('a');
+		btn.id = 'igx-ott-open-in-word';
+		btn.textContent = `Open in ${mapping.app}`;
+		btn.href = 'javascript:void(0)';
+		btn.style.cssText = [
+			'display: block',
+			'width: 100%',
+			'padding: 8px 16px',
+			'margin-bottom: 5px',
+			'background: #2563eb',
+			'color: #fff',
+			'text-align: center',
+			'border-radius: 3px',
+			'font-size: 13px',
+			'font-family: inherit',
+			'font-weight: 500',
+			'cursor: pointer',
+			'text-decoration: none',
+			'box-sizing: border-box',
+		].join(';');
+
+		btn.addEventListener('click', (e: Event) => {
+			e.preventDefault();
+			const uri = mapping.uri + encodeURI(downloadUrl);
+			console.log(`[IGX-OTT] Opening in ${mapping.app}: ${uri}`);
+			topWindow.open(uri, '_self');
+		});
+
+		// Hover effect
+		btn.addEventListener('mouseenter', () => { btn.style.background = '#1d4ed8'; });
+		btn.addEventListener('mouseleave', () => { btn.style.background = '#2563eb'; });
+
+		// Insert as first child of the button container (above Upload New)
+		container.insertBefore(btn, container.firstChild);
+		this.openInWordBtn = btn;
+
+		console.log(`[IGX-OTT] "Open in ${mapping.app}" button injected, URL: ${downloadUrl}`);
 	}
 
 	/**
-	 * Public method to destroy the File Bar.
+	 * Public method to destroy the file bar / Open in Word button.
 	 */
 	public destroyFileBar(): void {
 		this.destroyFileBarInternal();
 	}
 
 	/**
-	 * Destroys the File Bar if present and restores assetpane-hub styling
+	 * Destroys the Open in Word button if present
 	 */
 	private destroyFileBarInternal(): void {
+		if (this.openInWordBtn) {
+			this.openInWordBtn.remove();
+			this.openInWordBtn = undefined;
+		}
+		// Also clean up the Angular component if it was used
 		if (this.fileBarRef) {
 			const host = this.fileBarRef.location.nativeElement;
 			this.dynamicComponentService.destroyComponent(this.fileBarRef.instance);
 			host?.remove();
 			this.fileBarRef = undefined;
-
-			// Restore assetpane-hub original style
-			if (this.hubOriginalStyle !== undefined) {
-				const topWindow = window.top as any;
-				const hub = topWindow?.document?.querySelector('assetpane-hub') as HTMLElement;
-				if (hub) {
-					hub.style.cssText = this.hubOriginalStyle;
-				}
-				this.hubOriginalStyle = undefined;
-			}
 		}
-	}
-
-	/**
-	 * Gets the file bar component if it exists
-	 */
-	public getFileBar(): ComponentRef<AssetFileBarComponent> | undefined {
-		return this.fileBarRef;
+		if (this.hubOriginalStyle !== undefined) {
+			const topWindow = window.top as any;
+			const hub = topWindow?.document?.querySelector('assetpane-hub') as HTMLElement;
+			if (hub) {
+				hub.style.cssText = this.hubOriginalStyle;
+			}
+			this.hubOriginalStyle = undefined;
+		}
 	}
 
 	/**
