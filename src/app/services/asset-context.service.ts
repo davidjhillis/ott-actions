@@ -19,6 +19,8 @@ export class AssetContextService implements OnDestroy {
 
 	private routerSub?: Subscription;
 	private currentXid?: string;
+	/** Incremented on every resolveFromUrl call; stale retry loops bail when mismatched */
+	private navGeneration = 0;
 
 	constructor(
 		private cms: CMSCommunicationsService,
@@ -86,6 +88,7 @@ export class AssetContextService implements OnDestroy {
 	 */
 	private resolveFromUrl(url: string): void {
 		console.log(`[IGX-OTT] resolveFromUrl: ${url}`);
+		this.navGeneration++;
 
 		// Try DAM folder pattern FIRST: assets/af_123 or assets/assetfolders_123
 		// Must check before asset pattern since 'af_' starts with 'a'
@@ -98,7 +101,14 @@ export class AssetContextService implements OnDestroy {
 		// Try DAM asset pattern: assets/a_123
 		const assetMatch = url.match(/assets\/(a_\d+)/i);
 		if (assetMatch) {
-			this.resolveAsset(assetMatch[1]);
+			const urlId = assetMatch[1];
+			const apiId = urlId.replace('_', '/');
+			// Emit provisional non-folder context immediately so subscribers
+			// (e.g. folder view) can tear down before the async GetAssetInfo returns.
+			if (this.contextSubject.value?.isFolder) {
+				this.contextSubject.next({ id: apiId, name: urlId, isFolder: false, path: '' });
+			}
+			this.resolveAsset(urlId);
 			return;
 		}
 
@@ -109,14 +119,11 @@ export class AssetContextService implements OnDestroy {
 			return;
 		}
 
-		// No match — only clear context if we're not already on a folder.
-		// The CMS sometimes fires extra NavigationEnd events with unrelated URLs;
-		// don't let them clobber a valid folder context.
-		const current = this.contextSubject.value;
-		if (!current?.isFolder) {
-			this.contextSubject.next(null);
-			this.currentXid = undefined;
-		}
+		// No match — always clear context.
+		// Previous logic guarded on !isFolder, but that left stale folder context
+		// when navigating from a folder to any non-matching URL.
+		this.contextSubject.next(null);
+		this.currentXid = undefined;
 	}
 
 	/**
@@ -207,7 +214,7 @@ export class AssetContextService implements OnDestroy {
 		this.currentXid = urlId;
 
 		const apiId = urlId.replace('_', '/');
-		this.tryResolveAssetFolder(apiId, urlId, 0);
+		this.tryResolveAssetFolder(apiId, urlId, 0, this.navGeneration);
 	}
 
 	/**
@@ -215,7 +222,10 @@ export class AssetContextService implements OnDestroy {
 	 * Retries up to 1.5s (10 x 150ms) to handle CMS render timing.
 	 * After basic context is set, fetches page data to read FolderType element.
 	 */
-	private tryResolveAssetFolder(apiId: string, urlId: string, attempt: number): void {
+	private tryResolveAssetFolder(apiId: string, urlId: string, attempt: number, gen: number): void {
+		// Bail if a newer navigation has started — prevents stale folder context
+		if (gen !== this.navGeneration) return;
+
 		const model = (window.top as any)?.NG_REF?.currentContent?.Model?._value;
 		const schema = model?.SchemaName;
 
@@ -232,9 +242,9 @@ export class AssetContextService implements OnDestroy {
 			console.log(`[IGX-OTT] Asset folder context: ${ctx.name} (${apiId}), schema: ${schema}`);
 
 			// Now fetch page data to read the FolderType element
-			this.fetchFolderType(apiId, ctx);
+			this.fetchFolderType(apiId, ctx, gen);
 		} else if (attempt < 10) {
-			setTimeout(() => this.tryResolveAssetFolder(apiId, urlId, attempt + 1), 150);
+			setTimeout(() => this.tryResolveAssetFolder(apiId, urlId, attempt + 1, gen), 150);
 		} else {
 			console.warn(`[IGX-OTT] Model.SchemaName not available after retries for ${apiId}`);
 			const name = model?.Name || urlId;
@@ -249,7 +259,7 @@ export class AssetContextService implements OnDestroy {
 			this.contextSubject.next(ctx);
 
 			// Still try to fetch FolderType
-			this.fetchFolderType(apiId, ctx);
+			this.fetchFolderType(apiId, ctx, gen);
 		}
 	}
 
@@ -260,7 +270,7 @@ export class AssetContextService implements OnDestroy {
 	 *
 	 * Falls back to site tree metadata lookup if no FolderType element found.
 	 */
-	private fetchFolderType(folderId: string, ctx: AssetContext): void {
+	private fetchFolderType(folderId: string, ctx: AssetContext, gen: number): void {
 		this.cms.callService<any>({
 			service: 'PageCommandsServices',
 			action: 'GetPageData',
@@ -268,6 +278,9 @@ export class AssetContextService implements OnDestroy {
 			timeout: 5000
 		}).subscribe({
 			next: (pageData) => {
+				// Bail if a newer navigation has started
+				if (gen !== this.navGeneration) return;
+
 				const elements = pageData?.Elements || pageData?.elements || {};
 				const folderType = elements['FolderType']?.Value
 					|| elements['FolderType']?.value
@@ -284,6 +297,7 @@ export class AssetContextService implements OnDestroy {
 			},
 			error: () => {
 				// API failed — try site tree metadata lookup
+				if (gen !== this.navGeneration) return;
 				this.enrichFromMetadataLookup(ctx);
 			}
 		});

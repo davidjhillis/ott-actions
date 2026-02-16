@@ -10,6 +10,7 @@ import { ThemeService } from './services/theme.service';
 import { ActionBarComponent } from './components/action-bar/action-bar.component';
 import { ActionManagerComponent } from './components/action-admin/action-manager.component';
 import { EnhancedFolderViewComponent } from './components/enhanced-folder-view/enhanced-folder-view.component';
+import { AssetFileBarComponent } from './components/asset-file-bar/asset-file-bar.component';
 import { ActionDefinition } from './models/action.model';
 import { AssetContext } from './models/asset-context.model';
 
@@ -26,7 +27,7 @@ import { AssetContext } from './models/asset-context.model';
 @Component({
 	selector: '[igx-ott-root]',
 	standalone: true,
-	imports: [CommonModule, ActionBarComponent, ActionManagerComponent, EnhancedFolderViewComponent],
+	imports: [CommonModule, ActionBarComponent, ActionManagerComponent, EnhancedFolderViewComponent, AssetFileBarComponent],
 	templateUrl: './app.component.html',
 	styleUrl: './app.component.less'
 })
@@ -99,15 +100,21 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 			);
 		}
 
-		// In CMS mode: manage Enhanced Folder View lifecycle based on context.
-		// Inject for ANY asset folder — folder-view.service handles content
-		// appropriately based on schema. Site tree metadata enriches when available.
+		// In CMS mode: 3-way context branch for folder view / file bar / clear.
+		// Folder → inject enhanced folder view, destroy file bar
+		// File asset → inject file bar, destroy folder view
+		// null → destroy both
 		this.observableSubTeardowns.push(
 			this.assetContextService.context$.subscribe(ctx => {
 				if (ctx?.isFolder) {
+					this.mainComponentService.destroyFileBar();
 					this.waitForFolderViewThenInject();
+				} else if (ctx && !ctx.isFolder) {
+					this.mainComponentService.destroyEnhancedFolderView();
+					this.waitForAssetPaneThenInjectFileBar();
 				} else {
 					this.mainComponentService.destroyEnhancedFolderView();
+					this.mainComponentService.destroyFileBar();
 				}
 			})
 		);
@@ -154,6 +161,28 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 			setTimeout(() => this.waitForFolderViewThenInject(elapsed + interval), interval);
 		} else {
 			console.warn('[IGX-OTT] Timed out waiting for CMS <folder-view> to render');
+		}
+	}
+
+	/**
+	 * Polls for the CMS <assetpane-hub> element to appear, then injects the file bar.
+	 * Retries every 150ms up to 3 seconds to handle variable CMS render timing.
+	 */
+	private waitForAssetPaneThenInjectFileBar(elapsed = 0): void {
+		const maxWait = 3000;
+		const interval = 150;
+		const topWindow = window.top as any;
+		const hub = topWindow?.document?.querySelector('assetpane-hub');
+
+		if (hub) {
+			this.mainComponentService.injectFileBar();
+			return;
+		}
+
+		if (elapsed < maxWait) {
+			setTimeout(() => this.waitForAssetPaneThenInjectFileBar(elapsed + interval), interval);
+		} else {
+			console.warn('[IGX-OTT] Timed out waiting for CMS <assetpane-hub> to render for file bar');
 		}
 	}
 

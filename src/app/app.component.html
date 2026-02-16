@@ -67,8 +67,12 @@
       </div>
     </div>
 
-    <!-- Simulated CMS content area — now uses Enhanced Folder View -->
+    <!-- Simulated CMS content area — Enhanced Folder View or File Bar -->
     <div class="dev-cms-area">
+      <ott-asset-file-bar
+        *ngIf="devContext && !devContext.isFolder"
+        [context]="devContext">
+      </ott-asset-file-bar>
       <ott-enhanced-folder-view
         *ngIf="devContext?.isFolder"
         [context]="devContext!">

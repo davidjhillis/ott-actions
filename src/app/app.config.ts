@@ -21,7 +21,7 @@ import {
 	Settings, Filter, Search, Eye, EyeOff, Lock, Unlock, Shield, Key,
 	AlertCircle, AlertTriangle, HelpCircle, CircleCheck, CircleX, Ban,
 	Layout, Grid3x3 as Grid, List, Columns3 as Columns, Rows3 as Rows,
-	Home, Printer, BarChart3, GripHorizontal
+	Home, Printer, BarChart3, GripHorizontal, ExternalLink
 } from 'lucide-angular';
 
 /** All icons registered for the application */
@@ -42,7 +42,7 @@ const appIcons = {
 	Settings, Filter, Search, Eye, EyeOff, Lock, Unlock, Shield, Key,
 	AlertCircle, AlertTriangle, HelpCircle, CircleCheck, CircleX, Ban,
 	Layout, Grid, List, Columns, Rows,
-	Home, Printer, BarChart3, GripHorizontal
+	Home, Printer, BarChart3, GripHorizontal, ExternalLink
 };
 
 /**

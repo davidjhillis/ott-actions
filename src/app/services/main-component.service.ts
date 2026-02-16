@@ -8,6 +8,7 @@ import { MicroFrontendPanelComponent } from "../components/micro-frontend-panel/
 import { MicroFrontendUtilPaneComponent } from "../components/micro-frontend-util-pane/micro-frontend-util-pane.component";
 import { ActionBarComponent } from "../components/action-bar/action-bar.component";
 import { EnhancedFolderViewComponent } from "../components/enhanced-folder-view/enhanced-folder-view.component";
+import { AssetFileBarComponent } from "../components/asset-file-bar/asset-file-bar.component";
 import { ActionDefinition } from "../models/action.model";
 import { ActionConfigService } from "./action-config.service";
 import { ComponentBase } from "../ComponentBase";
@@ -23,6 +24,7 @@ export class MainComponentService extends ComponentBase {
 	private microFrontendUtilPaneRef?: ComponentRef<MicroFrontendUtilPaneComponent>;
 	private actionPanelRef?: ComponentRef<ActionBarComponent>;
 	private folderViewRef?: ComponentRef<EnhancedFolderViewComponent>;
+	private fileBarRef?: ComponentRef<AssetFileBarComponent>;
 
 	// Panel toggle event
 	public onPanelToggle: EventEmitter<any> = new EventEmitter<any>();
@@ -318,6 +320,69 @@ export class MainComponentService extends ComponentBase {
 	}
 
 	/**
+	 * Injects the File Bar into the CMS main content area.
+	 * Called when a file asset (non-folder) is selected.
+	 * Inserts as first child of assetpane-hub.
+	 */
+	public injectFileBar(): void {
+		const ctx = this.assetContextService.getCurrentContext();
+		if (!ctx || ctx.isFolder) return;
+
+		// Destroy existing file bar if present
+		this.destroyFileBarInternal();
+
+		const topWindow = window.top as any;
+		if (!topWindow) return;
+
+		// Find assetpane-hub in the CMS DOM
+		const hub = topWindow.document.querySelector('assetpane-hub') as HTMLElement;
+		if (!hub) {
+			console.warn('[IGX-OTT] Could not find <assetpane-hub> for file bar injection');
+			return;
+		}
+
+		// Create host element
+		const host = topWindow.document.createElement('div');
+		host.id = 'igx-ott-file-bar';
+		host.style.cssText = 'position:relative;z-index:1;width:100%;';
+
+		// Insert as first child of assetpane-hub
+		hub.insertBefore(host, hub.firstChild);
+
+		// Create the File Bar component
+		this.fileBarRef = this.dynamicComponentService.createComponent(AssetFileBarComponent, host);
+		this.fileBarRef.instance.context = ctx;
+
+		console.log(`[IGX-OTT] File Bar injected for: ${ctx.name} (${ctx.id})`);
+	}
+
+	/**
+	 * Public method to destroy the File Bar.
+	 */
+	public destroyFileBar(): void {
+		this.destroyFileBarInternal();
+	}
+
+	/**
+	 * Destroys the File Bar if present
+	 */
+	private destroyFileBarInternal(): void {
+		if (this.fileBarRef) {
+			const host = this.fileBarRef.location.nativeElement;
+			this.dynamicComponentService.destroyComponent(this.fileBarRef.instance);
+			host?.remove();
+			this.fileBarRef = undefined;
+		}
+	}
+
+	/**
+	 * Gets the file bar component if it exists
+	 */
+	public getFileBar(): ComponentRef<AssetFileBarComponent> | undefined {
+		return this.fileBarRef;
+	}
+
+	/**
 	 * Hides non-folder UI components on navigation.
 	 * The folder view lifecycle is managed separately by the context subscription.
 	 */
@@ -376,6 +441,7 @@ export class MainComponentService extends ComponentBase {
 		}
 
 		this.destroyFolderView();
+		this.destroyFileBarInternal();
 
 		// Call parent cleanup
 		this.cleanup();
