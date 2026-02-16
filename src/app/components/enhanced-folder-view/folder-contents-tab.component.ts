@@ -9,89 +9,76 @@ import { FolderChildItem } from '../../models/translation.model';
 	standalone: true,
 	imports: [CommonModule, FormsModule, LucideIconComponent],
 	template: `
-		<div class="contents-tab">
+		<div class="ct">
 			<!-- Toolbar -->
-			<div class="contents-toolbar">
-				<div class="toolbar-left">
-					<button class="toolbar-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'" title="List">
-						<ott-icon name="list" [size]="14"></ott-icon>
-					</button>
-					<button class="toolbar-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Grid">
-						<ott-icon name="grid" [size]="14"></ott-icon>
-					</button>
-					<span class="item-count" *ngIf="items.length > 0">
-						{{ folderCount }} folders, {{ fileCount }} files
-					</span>
-				</div>
-				<div class="search-box">
+			<div class="ct-toolbar">
+				<span class="ct-count">
+					{{ folderCount }} {{ folderCount === 1 ? 'folder' : 'folders' }}<ng-container *ngIf="fileCount">, {{ fileCount }} {{ fileCount === 1 ? 'file' : 'files' }}</ng-container>
+				</span>
+				<div class="ct-search">
 					<ott-icon name="search" [size]="13" color="var(--ott-text-muted)"></ott-icon>
-					<input type="text" placeholder="Filter..." [(ngModel)]="searchQuery" (input)="onSearch()">
+					<input type="text" placeholder="Filter..." [(ngModel)]="searchQuery">
 				</div>
 			</div>
 
 			<!-- Table -->
-			<table class="contents-table">
-				<thead>
-					<tr>
-						<th class="col-check">
-							<input type="checkbox" [checked]="allSelected" (change)="toggleAll()">
-						</th>
-						<th class="col-name" (click)="sort('name')">
-							Name
-							<ott-icon *ngIf="sortField === 'name'" [name]="sortDir === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="11"></ott-icon>
-						</th>
-						<th class="col-id">ID</th>
-						<th class="col-type" (click)="sort('type')">
-							Type
-							<ott-icon *ngIf="sortField === 'type'" [name]="sortDir === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="11"></ott-icon>
-						</th>
-						<th class="col-size">Size</th>
-						<th class="col-modified" (click)="sort('modified')">
-							Modified
-							<ott-icon *ngIf="sortField === 'modified'" [name]="sortDir === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="11"></ott-icon>
-						</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr *ngFor="let item of filteredItems; trackBy: trackById"
-						[class.selected]="selectedIds.has(item.id)"
-						[class.folder-row]="item.isFolder"
-						(click)="onItemClick(item)"
-						(dblclick)="onItemDblClick(item)">
-						<td class="col-check" (click)="$event.stopPropagation()">
-							<input type="checkbox" [checked]="selectedIds.has(item.id)" (change)="toggleItem(item)">
-						</td>
-						<td class="col-name">
-							<ott-icon
-								[name]="item.isFolder ? 'folder' : getFileIcon(item)"
-								[size]="14"
-								[color]="item.isFolder ? 'var(--ott-primary)' : 'var(--ott-text-muted)'">
-							</ott-icon>
-							<span class="item-name" [title]="item.name">{{ item.name }}</span>
-						</td>
-						<td class="col-id">{{ item.id }}</td>
-						<td class="col-type">
-							<span class="type-badge" *ngIf="item.schema || item.isFolder"
-								[class.type-folder]="item.isFolder">
-								{{ item.type }}
-							</span>
-							<span *ngIf="!item.schema && !item.isFolder">{{ item.type }}</span>
-						</td>
-						<td class="col-size">{{ item.size || '—' }}</td>
-						<td class="col-modified">{{ item.modified }}</td>
-					</tr>
-				</tbody>
-			</table>
-
-			<div class="empty-state" *ngIf="filteredItems.length === 0">
-				<ott-icon name="folder-open" [size]="18" color="var(--ott-text-muted)"></ott-icon>
-				{{ searchQuery ? 'No matching items' : 'Empty folder' }}
+			<div class="ct-table-wrap">
+				<table class="ct-table">
+					<thead>
+						<tr>
+							<th class="ct-col-name" (click)="sort('name')">
+								Name
+								<ott-icon *ngIf="sortField === 'name'" [name]="sortDir === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="10"></ott-icon>
+							</th>
+							<th class="ct-col-id">ID</th>
+							<th class="ct-col-type" (click)="sort('type')">
+								Type
+								<ott-icon *ngIf="sortField === 'type'" [name]="sortDir === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="10"></ott-icon>
+							</th>
+							<th class="ct-col-size">Size</th>
+							<th class="ct-col-mod" (click)="sort('modified')">
+								Modified
+								<ott-icon *ngIf="sortField === 'modified'" [name]="sortDir === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="10"></ott-icon>
+							</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr *ngFor="let item of filteredItems; trackBy: trackById"
+							[class.ct-selected]="selectedIds.has(item.id)"
+							(click)="toggleItem(item)"
+							(dblclick)="onItemDblClick(item)">
+							<td class="ct-col-name">
+								<div class="ct-name-cell">
+									<div class="ct-icon-wrap" [class.ct-icon-folder]="item.isFolder">
+										<ott-icon
+											[name]="item.isFolder ? 'folder' : getFileIcon(item)"
+											[size]="14"
+											[color]="item.isFolder ? 'var(--ott-primary)' : 'var(--ott-text-muted)'">
+										</ott-icon>
+									</div>
+									<span class="ct-item-name">{{ item.name }}</span>
+								</div>
+							</td>
+							<td class="ct-col-id">{{ item.id }}</td>
+							<td class="ct-col-type">
+								<span class="ct-type" [class.ct-type-folder]="item.isFolder">{{ item.type }}</span>
+							</td>
+							<td class="ct-col-size">{{ item.size || '—' }}</td>
+							<td class="ct-col-mod">{{ item.modified || '—' }}</td>
+						</tr>
+					</tbody>
+				</table>
 			</div>
 
-			<!-- Selection summary -->
-			<div class="selection-bar" *ngIf="selectedIds.size > 0">
-				{{ selectedIds.size }} selected
-				<button class="clear-btn" (click)="clearSelection()">Clear</button>
+			<div class="ct-empty" *ngIf="filteredItems.length === 0">
+				<ott-icon name="folder-open" [size]="20" color="var(--ott-text-muted)"></ott-icon>
+				<span>{{ searchQuery ? 'No matching items' : 'Empty folder' }}</span>
+			</div>
+
+			<!-- Selection bar -->
+			<div class="ct-selection" *ngIf="selectedIds.size > 0">
+				<span>{{ selectedIds.size }} selected</span>
+				<button class="ct-clear" (click)="clearSelection()">Clear</button>
 			</div>
 		</div>
 	`,
@@ -99,101 +86,172 @@ import { FolderChildItem } from '../../models/translation.model';
 		:host { display: block; font-family: var(--ott-font); }
 
 		/* Toolbar */
-		.contents-toolbar {
-			display: flex; align-items: center; justify-content: space-between;
-			margin-bottom: 8px;
+		.ct-toolbar {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 10px;
 		}
-		.toolbar-left { display: flex; align-items: center; gap: 6px; }
-		.toolbar-btn {
-			display: inline-flex; align-items: center;
-			border: none; background: none; cursor: pointer;
-			color: var(--ott-text-muted); padding: 5px 6px;
-			border-radius: var(--ott-radius-sm); transition: all 0.12s;
+		.ct-count {
+			font-size: 12px;
+			color: var(--ott-text-muted);
+			font-weight: 500;
 		}
-		.toolbar-btn:hover { color: var(--ott-text-secondary); background: var(--ott-bg-muted); }
-		.toolbar-btn.active { color: var(--ott-primary); background: var(--ott-primary-light); }
-		.item-count {
-			font-size: var(--ott-font-size-xs); color: var(--ott-text-muted); margin-left: 4px;
-		}
-		.search-box {
-			display: flex; align-items: center; gap: 5px;
-			padding: 4px 10px; border: 1px solid var(--ott-border-light);
-			border-radius: var(--ott-radius-md); background: var(--ott-bg);
+		.ct-search {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			padding: 5px 10px;
+			border: 1px solid var(--ott-border-light);
+			border-radius: var(--ott-radius-md);
+			background: var(--ott-bg);
 			transition: border-color 0.15s, box-shadow 0.15s;
 		}
-		.search-box:focus-within {
+		.ct-search:focus-within {
 			border-color: var(--ott-primary);
 			box-shadow: 0 0 0 2px var(--ott-ring);
 		}
-		.search-box input {
-			border: none; outline: none; font-size: var(--ott-font-size-base);
-			font-family: var(--ott-font); color: var(--ott-text);
-			background: transparent; width: 140px;
+		.ct-search input {
+			border: none;
+			outline: none;
+			font-size: 13px;
+			font-family: var(--ott-font);
+			color: var(--ott-text);
+			background: transparent;
+			width: 130px;
 		}
 
 		/* Table */
-		.contents-table {
-			width: 100%; border-collapse: collapse; font-size: var(--ott-font-size-base);
+		.ct-table-wrap {
+			border: 1px solid var(--ott-border-light);
+			border-radius: var(--ott-radius-lg);
+			overflow: hidden;
 		}
-		.contents-table th {
-			text-align: left; padding: 8px 10px;
-			font-size: var(--ott-font-size-sm); font-weight: 500;
+		.ct-table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 13px;
+		}
+		.ct-table thead {
+			background: var(--ott-bg-muted);
+		}
+		.ct-table th {
+			text-align: left;
+			padding: 8px 12px;
+			font-size: 11px;
+			font-weight: 600;
 			color: var(--ott-text-muted);
+			text-transform: uppercase;
+			letter-spacing: 0.3px;
 			border-bottom: 1px solid var(--ott-border-light);
-			cursor: pointer; user-select: none; white-space: nowrap;
+			cursor: pointer;
+			user-select: none;
+			white-space: nowrap;
 		}
-		.contents-table th ott-icon { vertical-align: middle; margin-left: 2px; }
-		.contents-table td {
-			padding: 9px 10px; color: var(--ott-text);
+		.ct-table th ott-icon { vertical-align: middle; margin-left: 2px; }
+		.ct-table td {
+			padding: 10px 12px;
+			color: var(--ott-text);
 			border-bottom: 1px solid var(--ott-border-light);
 		}
-		.contents-table tbody tr {
-			cursor: pointer; transition: background 0.08s;
+		.ct-table tbody tr {
+			cursor: pointer;
+			transition: background 0.08s;
 		}
-		.contents-table tbody tr:hover { background: var(--ott-bg-muted); }
-		.contents-table tbody tr.selected { background: var(--ott-bg-selected); }
-		.contents-table tbody tr.folder-row { font-weight: 500; }
+		.ct-table tbody tr:hover { background: var(--ott-bg-hover); }
+		.ct-table tbody tr.ct-selected { background: var(--ott-bg-selected); }
+		.ct-table tbody tr:last-child td { border-bottom: none; }
 
-		.col-check { width: 28px; text-align: center; }
-		.col-name {
-			display: flex; align-items: center; gap: 7px; min-width: 0;
+		/* Columns */
+		.ct-col-name { min-width: 0; }
+		.ct-name-cell {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			min-width: 0;
 		}
-		.item-name {
-			overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-		}
-		.col-id { width: 60px; font-size: var(--ott-font-size-xs); color: var(--ott-text-muted); font-family: var(--ott-font-mono); }
-		.col-type { width: 120px; font-size: var(--ott-font-size-sm); color: var(--ott-text-muted); }
-		.col-size { width: 70px; font-size: var(--ott-font-size-sm); color: var(--ott-text-muted); }
-		.col-modified { width: 90px; font-size: var(--ott-font-size-sm); color: var(--ott-text-muted); }
-
-		/* Type badges */
-		.type-badge {
-			font-size: var(--ott-font-size-xs); font-weight: 500; padding: 2px 7px;
+		.ct-icon-wrap {
+			width: 28px;
+			height: 28px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
 			border-radius: var(--ott-radius-sm);
-			background: var(--ott-bg-subtle); color: var(--ott-text-secondary);
+			background: var(--ott-bg-subtle);
+			flex-shrink: 0;
 		}
-		.type-badge.type-folder {
-			background: var(--ott-primary-light); color: var(--ott-primary);
+		.ct-icon-wrap.ct-icon-folder {
+			background: var(--ott-primary-light);
+		}
+		.ct-item-name {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			font-weight: 500;
+		}
+		.ct-col-id {
+			width: 60px;
+			font-size: 11px;
+			color: var(--ott-text-muted);
+			font-family: var(--ott-font-mono);
+		}
+		.ct-col-type { width: 100px; }
+		.ct-type {
+			font-size: 11px;
+			font-weight: 500;
+			padding: 2px 8px;
+			border-radius: var(--ott-radius-full);
+			background: var(--ott-bg-subtle);
+			color: var(--ott-text-secondary);
+		}
+		.ct-type.ct-type-folder {
+			background: var(--ott-primary-light);
+			color: var(--ott-primary);
+		}
+		.ct-col-size {
+			width: 60px;
+			font-size: 12px;
+			color: var(--ott-text-muted);
+		}
+		.ct-col-mod {
+			width: 90px;
+			font-size: 12px;
+			color: var(--ott-text-muted);
 		}
 
 		/* Empty */
-		.empty-state {
-			display: flex; align-items: center; justify-content: center; gap: 6px;
-			padding: 28px 0; font-size: var(--ott-font-size-base); color: var(--ott-text-muted);
+		.ct-empty {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 8px;
+			padding: 40px 0;
+			font-size: 13px;
+			color: var(--ott-text-muted);
 		}
 
 		/* Selection bar */
-		.selection-bar {
-			display: flex; align-items: center; gap: 8px;
-			padding: 8px 10px; margin-top: 6px;
+		.ct-selection {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 8px 12px;
+			margin-top: 8px;
 			background: var(--ott-primary-light);
-			border-radius: var(--ott-radius-sm);
-			font-size: var(--ott-font-size-sm); color: var(--ott-primary); font-weight: 500;
+			border-radius: var(--ott-radius-md);
+			font-size: 12px;
+			color: var(--ott-primary);
+			font-weight: 500;
 		}
-		.clear-btn {
-			border: none; background: none; cursor: pointer;
-			font-size: var(--ott-font-size-sm); font-family: var(--ott-font);
-			color: var(--ott-primary); text-decoration: underline; padding: 0;
+		.ct-clear {
+			border: none;
+			background: none;
+			cursor: pointer;
+			font-size: 12px;
+			font-family: var(--ott-font);
+			color: var(--ott-primary);
+			text-decoration: underline;
+			padding: 0;
 		}
 	`]
 })
@@ -203,7 +261,6 @@ export class FolderContentsTabComponent {
 	@Output() selectionChange = new EventEmitter<FolderChildItem[]>();
 
 	searchQuery = '';
-	viewMode: 'list' | 'grid' = 'list';
 	sortField: 'name' | 'modified' | 'type' = 'name';
 	sortDir: 'asc' | 'desc' = 'asc';
 	selectedIds = new Set<string>();
@@ -214,19 +271,13 @@ export class FolderContentsTabComponent {
 			const q = this.searchQuery.toLowerCase();
 			items = items.filter(i => i.name.toLowerCase().includes(q) || i.type.toLowerCase().includes(q));
 		}
-		// Sort: folders first, then by sortField
 		return items.sort((a, b) => {
-			// Folders always first
 			if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
 			const av = (a as any)[this.sortField] || '';
 			const bv = (b as any)[this.sortField] || '';
 			const cmp = String(av).localeCompare(String(bv));
 			return this.sortDir === 'asc' ? cmp : -cmp;
 		});
-	}
-
-	get allSelected(): boolean {
-		return this.filteredItems.length > 0 && this.filteredItems.every(i => this.selectedIds.has(i.id));
 	}
 
 	get folderCount(): number {
@@ -248,27 +299,20 @@ export class FolderContentsTabComponent {
 		}
 	}
 
-	toggleAll(): void {
-		if (this.allSelected) this.selectedIds.clear();
-		else this.filteredItems.forEach(i => this.selectedIds.add(i.id));
-		this.emitSelection();
-	}
-
 	toggleItem(item: FolderChildItem): void {
 		if (this.selectedIds.has(item.id)) this.selectedIds.delete(item.id);
 		else this.selectedIds.add(item.id);
 		this.emitSelection();
 	}
 
-	onItemClick(item: FolderChildItem): void { this.toggleItem(item); }
-
 	onItemDblClick(item: FolderChildItem): void {
-		// Double-click: open folder navigation or file details
 		this.itemOpen.emit(item);
 	}
 
-	clearSelection(): void { this.selectedIds.clear(); this.emitSelection(); }
-	onSearch(): void {}
+	clearSelection(): void {
+		this.selectedIds.clear();
+		this.emitSelection();
+	}
 
 	getFileIcon(item: FolderChildItem): string {
 		const type = (item.type || '').toLowerCase();

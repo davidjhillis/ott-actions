@@ -38,13 +38,21 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 				(navigate)="onBreadcrumbNav($event)">
 			</ott-folder-breadcrumb>
 
-			<!-- Header row: title + ID -->
+			<!-- Header -->
 			<div class="efv-header">
-				<h2 class="efv-title">{{ context?.name || 'Folder' }}</h2>
-				<span class="efv-id">{{ context?.id }}</span>
+				<div class="efv-header-left">
+					<div class="efv-icon-wrap">
+						<ott-icon name="folder" [size]="20" color="var(--ott-primary)"></ott-icon>
+					</div>
+					<div class="efv-header-text">
+						<h2 class="efv-title">{{ context?.name || 'Folder' }}</h2>
+						<span class="efv-id">{{ context?.id }}</span>
+					</div>
+				</div>
+				<span class="efv-schema-pill" *ngIf="viewData.schema !== 'default'">{{ viewData.schema | titlecase }}</span>
 			</div>
 
-			<!-- Metadata Card (collapsed by default) -->
+			<!-- Metadata — always visible when present -->
 			<ott-folder-metadata-card
 				#metadataCard
 				[schema]="viewData.schema"
@@ -74,7 +82,7 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 					[class.active]="activeTab === tab.id"
 					(click)="activeTab = tab.id">
 					{{ tab.label }}
-					<span class="tab-badge" *ngIf="getTabCount(tab.id) as count">{{ count }}</span>
+					<span class="tab-count" *ngIf="getTabCount(tab.id) as count">{{ count }}</span>
 				</button>
 			</nav>
 
@@ -127,28 +135,65 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 		:host { display: block; font-family: var(--ott-font); }
 
 		.efv {
-			padding: 12px 20px 20px;
+			padding: 16px 24px 24px;
 			max-width: 100%;
 		}
 
 		/* Header */
 		.efv-header {
 			display: flex;
-			align-items: baseline;
-			gap: 8px;
-			margin: 2px 0 10px;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			margin: 4px 0 16px;
+		}
+		.efv-header-left {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			min-width: 0;
+		}
+		.efv-icon-wrap {
+			width: 40px;
+			height: 40px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			border-radius: var(--ott-radius-lg);
+			background: var(--ott-primary-light);
+			flex-shrink: 0;
+		}
+		.efv-header-text {
+			display: flex;
+			flex-direction: column;
+			min-width: 0;
 		}
 		.efv-title {
 			margin: 0;
-			font-size: var(--ott-font-size-xl);
-			font-weight: 700;
+			font-size: 18px;
+			font-weight: 600;
 			color: var(--ott-text);
 			letter-spacing: -0.01em;
+			line-height: 1.3;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 		.efv-id {
-			font-size: var(--ott-font-size-xs);
+			font-size: 11px;
 			color: var(--ott-text-muted);
 			font-family: var(--ott-font-mono);
+			line-height: 1.4;
+		}
+		.efv-schema-pill {
+			flex-shrink: 0;
+			font-size: 11px;
+			font-weight: 600;
+			padding: 4px 10px;
+			border-radius: var(--ott-radius-full);
+			background: var(--ott-primary-light);
+			color: var(--ott-primary);
+			white-space: nowrap;
 		}
 
 		/* Report edit area */
@@ -163,37 +208,41 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 		/* Tab bar */
 		.efv-tabs {
 			display: flex;
-			gap: 0;
-			margin-top: 16px;
-			border-bottom: 1px solid var(--ott-border-light);
+			gap: 2px;
+			margin-top: 20px;
+			padding: 3px;
+			background: var(--ott-bg-subtle);
+			border-radius: var(--ott-radius-lg);
 		}
 		.efv-tab {
 			display: inline-flex;
 			align-items: center;
-			gap: 5px;
-			padding: 10px 14px;
+			gap: 6px;
+			padding: 7px 14px;
 			border: none;
 			background: none;
 			cursor: pointer;
-			font-size: var(--ott-font-size-md);
+			font-size: 13px;
 			font-family: var(--ott-font);
 			font-weight: 500;
 			color: var(--ott-text-muted);
-			border-bottom: 2px solid transparent;
-			margin-bottom: -1px;
-			transition: color 0.15s, border-color 0.15s;
+			border-radius: var(--ott-radius-md);
+			transition: all 0.15s;
 			white-space: nowrap;
 		}
-		.efv-tab:hover { color: var(--ott-text-secondary); }
+		.efv-tab:hover {
+			color: var(--ott-text-secondary);
+		}
 		.efv-tab.active {
 			color: var(--ott-text);
-			border-bottom-color: var(--ott-primary);
+			background: var(--ott-bg);
+			box-shadow: var(--ott-shadow-sm);
 		}
-		.tab-badge {
-			font-size: var(--ott-font-size-xs);
+		.tab-count {
+			font-size: 11px;
 			font-weight: 600;
-			min-width: 20px;
-			height: 20px;
+			min-width: 18px;
+			height: 18px;
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -202,23 +251,23 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 			border-radius: var(--ott-radius-full);
 			padding: 0 5px;
 		}
-		.efv-tab.active .tab-badge {
+		.efv-tab.active .tab-count {
 			background: var(--ott-primary-light);
 			color: var(--ott-primary);
 		}
 
 		/* Tab content */
-		.efv-tab-content { padding-top: 14px; }
+		.efv-tab-content { padding-top: 16px; }
 
 		/* Placeholders */
 		.placeholder-tab {
 			display: flex;
 			flex-direction: column;
 			align-items: center;
-			gap: 6px;
-			padding: 40px 0;
+			gap: 8px;
+			padding: 48px 0;
 			color: var(--ott-text-muted);
-			font-size: var(--ott-font-size-base);
+			font-size: 13px;
 		}
 		.placeholder-tab p { margin: 0; }
 		.inline-edit-tab { max-width: 400px; padding: 12px 0; }
@@ -272,7 +321,6 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 
 	onBreadcrumbNav(segment: BreadcrumbSegment): void {
 		console.log(`[IGX-OTT] Navigate to: ${segment.name} (${segment.id})`);
-		// Reload folder view with the breadcrumb segment as new context
 		if (this.context && segment.id !== this.context.id) {
 			const newContext: AssetContext = {
 				id: segment.id,
@@ -303,7 +351,6 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 	onItemOpen(item: FolderChildItem): void {
 		console.log(`[IGX-OTT] Open item: ${item.name} (${item.id})`);
 		if (item.isFolder) {
-			// Navigate into sub-folder
 			const newContext: AssetContext = {
 				id: item.id,
 				name: item.name,
@@ -343,7 +390,6 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 
 	onUploadSourceFiles(): void {
 		console.log('[IGX-OTT] Upload source files');
-		// Trigger the upload modal via ActionExecutorService
 		this.actionExecutor.execute({
 			id: 'upload-source-files',
 			label: 'Upload Source Files',
@@ -357,7 +403,6 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 
 	onAddCollection(): void {
 		console.log('[IGX-OTT] Add collection');
-		// Trigger the create collection modal via ActionExecutorService
 		this.actionExecutor.execute({
 			id: 'create-collection',
 			label: 'Create Collection',

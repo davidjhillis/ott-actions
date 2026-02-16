@@ -13,478 +13,402 @@ import { ElementUpdate } from '../../services/metadata-lookup.service';
 	standalone: true,
 	imports: [CommonModule, FormsModule, LucideIconComponent],
 	template: `
-		<div class="metadata-card" [class.expanded]="expanded" [class.editing]="editing">
-			<!-- Always-visible summary row -->
-			<div class="card-summary" (click)="expanded = !expanded">
-				<div class="summary-left">
-					<span class="schema-badge">{{ schemaLabel }}</span>
-
-					<!-- Designation Collection summary -->
-					<ng-container *ngIf="designationMeta">
-						<span class="summary-sep">&middot;</span>
-						<span class="summary-text">{{ designationMeta.committee }}</span>
-						<span class="summary-sep">&middot;</span>
-						<span class="summary-text muted">{{ designationMeta.homeEditor }}</span>
-						<ng-container *ngIf="designationMeta.translationMaintenance.length > 0">
-							<span class="summary-sep">&middot;</span>
-							<span class="lang-pills">
-								<span class="lang-pill" *ngFor="let tm of designationMeta.translationMaintenance">
-									{{ tm.locale }}
-								</span>
-							</span>
-						</ng-container>
-					</ng-container>
-
-					<!-- Batch summary -->
-					<ng-container *ngIf="batchMeta">
-						<span class="summary-sep">&middot;</span>
-						<span class="vendor-badge">{{ batchMeta.vendor }}</span>
-						<span class="summary-sep">&middot;</span>
-						<span class="summary-text">{{ batchMeta.standardCount }} standards</span>
-						<span class="summary-sep">&middot;</span>
-						<span class="readiness-badge" [ngClass]="'readiness-' + batchMeta.productionReadiness.toLowerCase().replace(' ', '-')">
-							{{ batchMeta.productionReadiness }}
-						</span>
-					</ng-container>
-
-					<!-- Dated Version summary -->
-					<ng-container *ngIf="datedVersionMeta">
-						<span class="summary-sep">&middot;</span>
-						<span class="summary-text">{{ datedVersionMeta.actionType }}</span>
-					</ng-container>
-
-					<!-- Dynamic fields summary (when no typed metadata) -->
-					<ng-container *ngIf="!designationMeta && !batchMeta && !datedVersionMeta && pageFields.length > 0">
-						<span class="summary-sep">&middot;</span>
-						<span class="summary-text">{{ pageFields.length }} fields</span>
-					</ng-container>
-				</div>
-
-				<div class="summary-right">
-					<!-- Edit button (only when metadataPageId is set) -->
-					<button *ngIf="metadataPageId && expanded && !editing"
-						class="edit-mode-btn"
-						(click)="$event.stopPropagation(); startEditing()"
+		<div class="mc" *ngIf="hasMetadata" [class.mc-editing]="editing">
+			<!-- Card header -->
+			<div class="mc-header">
+				<span class="mc-label">Metadata</span>
+				<div class="mc-actions">
+					<button *ngIf="metadataPageId && !editing"
+						class="mc-edit-btn"
+						(click)="startEditing()"
 						title="Edit metadata">
-						<ott-icon name="pencil" [size]="13"></ott-icon>
+						<ott-icon name="pencil" [size]="12"></ott-icon>
+						Edit
 					</button>
-					<button class="expand-btn" [class.rotated]="expanded">
-						<ott-icon name="chevron-down" [size]="14"></ott-icon>
-					</button>
+					<ng-container *ngIf="editing">
+						<button class="mc-cancel-btn" (click)="cancelEditing()">Cancel</button>
+						<button class="mc-save-btn" (click)="saveEdits()" [disabled]="saving">
+							{{ saving ? 'Saving...' : 'Save' }}
+						</button>
+					</ng-container>
 				</div>
 			</div>
 
-			<!-- Expanded detail panel -->
-			<div class="card-details" *ngIf="expanded">
-
-				<!-- TYPED METADATA (for known schemas) -->
-
-				<!-- Designation Collection -->
-				<ng-container *ngIf="designationMeta">
-					<div class="detail-grid">
-						<div class="detail-item">
-							<span class="detail-label">Designation Number</span>
-							<span class="detail-value mono" *ngIf="!editing">{{ designationMeta.baseDesignation }}</span>
-							<input *ngIf="editing" class="edit-input" type="text"
-								[ngModel]="editValues['DesignationNumber']"
-								(ngModelChange)="editValues['DesignationNumber'] = $event">
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Organization</span>
-							<span class="detail-value" *ngIf="!editing">{{ designationMeta.organization }}</span>
-							<input *ngIf="editing" class="edit-input" type="text"
-								[ngModel]="editValues['Organization']"
-								(ngModelChange)="editValues['Organization'] = $event">
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Committee</span>
-							<span class="detail-value" *ngIf="!editing">{{ designationMeta.committee }}</span>
-							<input *ngIf="editing" class="edit-input" type="text"
-								[ngModel]="editValues['Committee']"
-								(ngModelChange)="editValues['Committee'] = $event">
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Home Editor</span>
-							<span class="detail-value" *ngIf="!editing">{{ designationMeta.homeEditor }}</span>
-							<input *ngIf="editing" class="edit-input" type="text"
-								[ngModel]="editValues['HomeEditor']"
-								(ngModelChange)="editValues['HomeEditor'] = $event">
-						</div>
-						<div class="detail-item" *ngIf="designationMeta.reportNumber || editing">
-							<span class="detail-label">Report #</span>
-							<span class="detail-value mono" *ngIf="!editing">
-								{{ designationMeta.reportNumber }}
-								<button class="edit-inline-btn" (click)="$event.stopPropagation(); editReportNumber.emit()" title="Edit">
-									<ott-icon name="pencil" [size]="11"></ott-icon>
-								</button>
-							</span>
-							<input *ngIf="editing" class="edit-input" type="text"
-								[ngModel]="editValues['ReportNumber']"
-								(ngModelChange)="editValues['ReportNumber'] = $event">
-						</div>
-						<div class="detail-item" *ngIf="designationMeta.sourceLocale || editing">
-							<span class="detail-label">Source Locale</span>
-							<span class="detail-value mono" *ngIf="!editing">{{ designationMeta.sourceLocale }}</span>
-							<input *ngIf="editing" class="edit-input" type="text"
-								[ngModel]="editValues['SourceLocale']"
-								(ngModelChange)="editValues['SourceLocale'] = $event">
-						</div>
-						<div class="detail-item span-2" *ngIf="designationMeta.notes || editing">
-							<span class="detail-label">Notes</span>
-							<span class="detail-value" *ngIf="!editing">{{ designationMeta.notes }}</span>
-							<textarea *ngIf="editing" class="edit-textarea"
-								[ngModel]="editValues['Notes']"
-								(ngModelChange)="editValues['Notes'] = $event"></textarea>
-						</div>
+			<!-- Designation Collection -->
+			<ng-container *ngIf="designationMeta">
+				<div class="mc-grid">
+					<div class="mc-field">
+						<span class="mc-field-label">Designation Number</span>
+						<span class="mc-field-value mono" *ngIf="!editing">{{ designationMeta.baseDesignation || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['DesignationNumber']"
+							(ngModelChange)="editValues['DesignationNumber'] = $event">
 					</div>
+					<div class="mc-field" *ngIf="designationMeta.organization || editing">
+						<span class="mc-field-label">Organization</span>
+						<span class="mc-field-value" *ngIf="!editing">{{ designationMeta.organization || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['Organization']"
+							(ngModelChange)="editValues['Organization'] = $event">
+					</div>
+					<div class="mc-field">
+						<span class="mc-field-label">Committee</span>
+						<span class="mc-field-value" *ngIf="!editing">{{ designationMeta.committee || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['Committee']"
+							(ngModelChange)="editValues['Committee'] = $event">
+					</div>
+					<div class="mc-field" *ngIf="designationMeta.homeEditor || editing">
+						<span class="mc-field-label">Home Editor</span>
+						<span class="mc-field-value" *ngIf="!editing">{{ designationMeta.homeEditor || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['HomeEditor']"
+							(ngModelChange)="editValues['HomeEditor'] = $event">
+					</div>
+					<div class="mc-field" *ngIf="designationMeta.sourceLocale || editing">
+						<span class="mc-field-label">Source Locale</span>
+						<span class="mc-field-value mono" *ngIf="!editing">{{ designationMeta.sourceLocale || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['SourceLocale']"
+							(ngModelChange)="editValues['SourceLocale'] = $event">
+					</div>
+					<div class="mc-field" *ngIf="designationMeta.reportNumber || editing">
+						<span class="mc-field-label">Report #</span>
+						<span class="mc-field-value mono" *ngIf="!editing">{{ designationMeta.reportNumber || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['ReportNumber']"
+							(ngModelChange)="editValues['ReportNumber'] = $event">
+					</div>
+				</div>
+				<div class="mc-field mc-field-wide" *ngIf="designationMeta.notes || editing">
+					<span class="mc-field-label">Notes</span>
+					<span class="mc-field-value mc-field-notes" *ngIf="!editing">{{ designationMeta.notes || '—' }}</span>
+					<textarea *ngIf="editing" class="mc-textarea"
+						[ngModel]="editValues['Notes']"
+						(ngModelChange)="editValues['Notes'] = $event"></textarea>
+				</div>
 
-					<!-- Translation Maintenance (nested disclosure) -->
-					<div class="tm-section" *ngIf="designationMeta.translationMaintenance.length > 0">
-						<button class="tm-toggle" (click)="$event.stopPropagation(); tmExpanded = !tmExpanded">
-							<ott-icon [name]="tmExpanded ? 'chevron-down' : 'chevron-right'" [size]="12"></ott-icon>
-							Translation Maintenance
-							<span class="tm-count">{{ designationMeta.translationMaintenance.length }}</span>
+				<!-- Translation Maintenance -->
+				<div class="mc-section" *ngIf="designationMeta.translationMaintenance.length > 0">
+					<button class="mc-section-toggle" (click)="tmExpanded = !tmExpanded">
+						<ott-icon [name]="tmExpanded ? 'chevron-down' : 'chevron-right'" [size]="12"></ott-icon>
+						Translation Maintenance
+						<span class="mc-section-count">{{ designationMeta.translationMaintenance.length }}</span>
+					</button>
+					<table class="mc-table" *ngIf="tmExpanded">
+						<thead>
+							<tr><th>Language</th><th>Vendor</th><th>Compilations</th></tr>
+						</thead>
+						<tbody>
+							<tr *ngFor="let tm of designationMeta.translationMaintenance">
+								<td>{{ tm.language }}</td>
+								<td><span class="mc-badge">{{ tm.vendor }}</span></td>
+								<td class="mc-truncate">{{ tm.compilations.join(', ') }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</ng-container>
+
+			<!-- Standard Dated Version -->
+			<ng-container *ngIf="datedVersionMeta">
+				<div class="mc-grid">
+					<div class="mc-field mc-field-span2">
+						<span class="mc-field-label">Standard Title</span>
+						<span class="mc-field-value" *ngIf="!editing">{{ datedVersionMeta.standardTitle || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['StandardTitle']"
+							(ngModelChange)="editValues['StandardTitle'] = $event">
+					</div>
+					<div class="mc-field">
+						<span class="mc-field-label">Action Type</span>
+						<span class="mc-field-value" *ngIf="!editing">{{ datedVersionMeta.actionType || '—' }}</span>
+						<select *ngIf="editing" class="mc-select"
+							[ngModel]="editValues['ActionType']"
+							(ngModelChange)="editValues['ActionType'] = $event">
+							<option value="New Standard">New Standard</option>
+							<option value="Revision">Revision</option>
+							<option value="Reapproval">Reapproval</option>
+							<option value="Amendment">Amendment</option>
+							<option value="Withdrawal">Withdrawal</option>
+						</select>
+					</div>
+					<div class="mc-field">
+						<span class="mc-field-label">Approval Date</span>
+						<span class="mc-field-value" *ngIf="!editing">{{ datedVersionMeta.approvalDate || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="date"
+							[ngModel]="editValues['ApprovalDate']"
+							(ngModelChange)="editValues['ApprovalDate'] = $event">
+					</div>
+					<div class="mc-field">
+						<span class="mc-field-label">Publication Date</span>
+						<span class="mc-field-value" *ngIf="!editing">{{ datedVersionMeta.publicationDate || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="date"
+							[ngModel]="editValues['PublicationDate']"
+							(ngModelChange)="editValues['PublicationDate'] = $event">
+					</div>
+					<div class="mc-field" *ngIf="datedVersionMeta.designationCollectionName">
+						<span class="mc-field-label">Designation Collection</span>
+						<span class="mc-field-value mc-link" *ngIf="!editing"
+							(click)="navigateToCollection.emit(datedVersionMeta.designationCollectionId)">
+							{{ datedVersionMeta.designationCollectionName }}
+						</span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['DesignationCollectionName']"
+							(ngModelChange)="editValues['DesignationCollectionName'] = $event">
+					</div>
+				</div>
+			</ng-container>
+
+			<!-- Translation Batch -->
+			<ng-container *ngIf="batchMeta">
+				<div class="mc-grid">
+					<div class="mc-field">
+						<span class="mc-field-label">Batch ID</span>
+						<span class="mc-field-value mono" *ngIf="!editing">{{ batchMeta.batchId }}</span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['BatchID']"
+							(ngModelChange)="editValues['BatchID'] = $event">
+					</div>
+					<div class="mc-field">
+						<span class="mc-field-label">Vendor</span>
+						<span class="mc-field-value" *ngIf="!editing"><span class="mc-badge">{{ batchMeta.vendor }}</span></span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['Vendor']"
+							(ngModelChange)="editValues['Vendor'] = $event">
+					</div>
+					<div class="mc-field">
+						<span class="mc-field-label">Type</span>
+						<span class="mc-field-value" *ngIf="!editing">{{ batchMeta.type }}</span>
+						<select *ngIf="editing" class="mc-select"
+							[ngModel]="editValues['Type']"
+							(ngModelChange)="editValues['Type'] = $event">
+							<option value="New Translation">New Translation</option>
+							<option value="Revision">Revision</option>
+							<option value="Re-translation">Re-translation</option>
+						</select>
+					</div>
+					<div class="mc-field">
+						<span class="mc-field-label">Due Date</span>
+						<span class="mc-field-value" *ngIf="!editing">{{ batchMeta.dueDate || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="date"
+							[ngModel]="editValues['DueDate']"
+							(ngModelChange)="editValues['DueDate'] = $event">
+					</div>
+					<div class="mc-field">
+						<span class="mc-field-label">Assigned To</span>
+						<span class="mc-field-value" *ngIf="!editing">{{ batchMeta.assignedTo || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['AssignedTo']"
+							(ngModelChange)="editValues['AssignedTo'] = $event">
+					</div>
+					<div class="mc-field">
+						<span class="mc-field-label">Standards</span>
+						<span class="mc-field-value" *ngIf="!editing">{{ batchMeta.standardCount }}</span>
+						<input *ngIf="editing" class="mc-input" type="number"
+							[ngModel]="editValues['StandardCount']"
+							(ngModelChange)="editValues['StandardCount'] = $event">
+					</div>
+					<div class="mc-field">
+						<span class="mc-field-label">Days Elapsed</span>
+						<span class="mc-field-value">{{ batchMeta.daysElapsed }}</span>
+					</div>
+					<div class="mc-field">
+						<span class="mc-field-label">Readiness</span>
+						<span class="mc-field-value" *ngIf="!editing">
+							<span class="mc-status" [ngClass]="'mc-status-' + batchMeta.productionReadiness.toLowerCase().replace(' ', '-')">
+								{{ batchMeta.productionReadiness }}
+							</span>
+						</span>
+						<select *ngIf="editing" class="mc-select"
+							[ngModel]="editValues['ProductionReadiness']"
+							(ngModelChange)="editValues['ProductionReadiness'] = $event">
+							<option value="Ready">Ready</option>
+							<option value="Not Ready">Not Ready</option>
+							<option value="Partial">Partial</option>
+						</select>
+					</div>
+				</div>
+			</ng-container>
+
+			<!-- Dynamic fields (any schema) -->
+			<ng-container *ngIf="!designationMeta && !batchMeta && !datedVersionMeta && pageFields.length > 0">
+				<div class="mc-grid">
+					<ng-container *ngFor="let field of nonTableFields">
+						<div class="mc-field" [class.mc-field-span2]="isWideField(field)">
+							<span class="mc-field-label">{{ field.label }}</span>
+							<ng-container *ngIf="!editing">
+								<span class="mc-field-value" *ngIf="field.type === 'text' || field.type === 'date'">{{ field.value || '—' }}</span>
+								<span class="mc-field-value mc-link" *ngIf="field.type === 'link'">{{ field.value?.Name || field.value?.href || field.value }}</span>
+								<span class="mc-field-value" *ngIf="field.type === 'list'">
+									<span class="mc-chip" *ngFor="let item of field.value">{{ item }}</span>
+								</span>
+								<span class="mc-field-value" *ngIf="field.type === 'dropdown'">{{ field.value || '—' }}</span>
+								<span class="mc-field-value" *ngIf="field.type === 'rich-text'" [title]="field.value">
+									{{ stripHtml(field.value) | slice:0:120 }}
+								</span>
+							</ng-container>
+							<ng-container *ngIf="editing">
+								<input *ngIf="field.type === 'text' || field.type === 'link'" class="mc-input" type="text"
+									[ngModel]="editValues[field.name]"
+									(ngModelChange)="editValues[field.name] = $event">
+								<input *ngIf="field.type === 'date'" class="mc-input" type="date"
+									[ngModel]="editValues[field.name]"
+									(ngModelChange)="editValues[field.name] = $event">
+								<textarea *ngIf="field.type === 'rich-text'" class="mc-textarea"
+									[ngModel]="editValues[field.name]"
+									(ngModelChange)="editValues[field.name] = $event"></textarea>
+								<input *ngIf="field.type === 'dropdown' || field.type === 'list'" class="mc-input" type="text"
+									[ngModel]="editValues[field.name]"
+									(ngModelChange)="editValues[field.name] = $event">
+							</ng-container>
+						</div>
+					</ng-container>
+				</div>
+
+				<!-- Tables -->
+				<ng-container *ngFor="let field of tableFields">
+					<div class="mc-section">
+						<button class="mc-section-toggle" (click)="toggleTable(field.name)">
+							<ott-icon [name]="expandedTables[field.name] ? 'chevron-down' : 'chevron-right'" [size]="12"></ott-icon>
+							{{ field.label }}
+							<span class="mc-section-count" *ngIf="field.value?.length">{{ field.value.length }}</span>
 						</button>
-						<table class="tm-table" *ngIf="tmExpanded">
+						<table class="mc-table" *ngIf="expandedTables[field.name]">
 							<thead>
-								<tr><th>Language</th><th>Vendor</th><th>Compilations</th></tr>
+								<tr><th *ngFor="let col of getTableColumns(field.value)">{{ col }}</th></tr>
 							</thead>
 							<tbody>
-								<tr *ngFor="let tm of designationMeta.translationMaintenance">
-									<td>{{ tm.language }}</td>
-									<td><span class="vendor-badge">{{ tm.vendor }}</span></td>
-									<td class="compilations">{{ tm.compilations.join(', ') }}</td>
+								<tr *ngFor="let row of field.value">
+									<td *ngFor="let col of getTableColumns(field.value)">{{ getRowValue(row, col) }}</td>
 								</tr>
 							</tbody>
 						</table>
 					</div>
 				</ng-container>
-
-				<!-- Standard Dated Version -->
-				<ng-container *ngIf="datedVersionMeta">
-					<div class="detail-grid">
-						<div class="detail-item span-2">
-							<span class="detail-label">Standard Title</span>
-							<span class="detail-value" *ngIf="!editing">{{ datedVersionMeta.standardTitle }}</span>
-							<input *ngIf="editing" class="edit-input wide" type="text"
-								[ngModel]="editValues['StandardTitle']"
-								(ngModelChange)="editValues['StandardTitle'] = $event">
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Action Type</span>
-							<span class="detail-value" *ngIf="!editing">{{ datedVersionMeta.actionType }}</span>
-							<select *ngIf="editing" class="edit-select"
-								[ngModel]="editValues['ActionType']"
-								(ngModelChange)="editValues['ActionType'] = $event">
-								<option value="New Standard">New Standard</option>
-								<option value="Revision">Revision</option>
-								<option value="Reapproval">Reapproval</option>
-								<option value="Amendment">Amendment</option>
-								<option value="Withdrawal">Withdrawal</option>
-							</select>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Approval Date</span>
-							<span class="detail-value" *ngIf="!editing">{{ datedVersionMeta.approvalDate }}</span>
-							<input *ngIf="editing" class="edit-input" type="date"
-								[ngModel]="editValues['ApprovalDate']"
-								(ngModelChange)="editValues['ApprovalDate'] = $event">
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Publication Date</span>
-							<span class="detail-value" *ngIf="!editing">{{ datedVersionMeta.publicationDate }}</span>
-							<input *ngIf="editing" class="edit-input" type="date"
-								[ngModel]="editValues['PublicationDate']"
-								(ngModelChange)="editValues['PublicationDate'] = $event">
-						</div>
-						<div class="detail-item" *ngIf="datedVersionMeta.designationCollectionName">
-							<span class="detail-label">Designation Collection</span>
-							<span class="detail-value link" *ngIf="!editing"
-								(click)="$event.stopPropagation(); navigateToCollection.emit(datedVersionMeta.designationCollectionId)">
-								{{ datedVersionMeta.designationCollectionName }}
-							</span>
-							<input *ngIf="editing" class="edit-input" type="text"
-								[ngModel]="editValues['DesignationCollectionName']"
-								(ngModelChange)="editValues['DesignationCollectionName'] = $event">
-						</div>
-					</div>
-				</ng-container>
-
-				<!-- Translation Batch -->
-				<ng-container *ngIf="batchMeta">
-					<div class="detail-grid">
-						<div class="detail-item">
-							<span class="detail-label">Batch ID</span>
-							<span class="detail-value mono" *ngIf="!editing">{{ batchMeta.batchId }}</span>
-							<input *ngIf="editing" class="edit-input" type="text"
-								[ngModel]="editValues['BatchID']"
-								(ngModelChange)="editValues['BatchID'] = $event">
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Vendor</span>
-							<span class="detail-value" *ngIf="!editing"><span class="vendor-badge">{{ batchMeta.vendor }}</span></span>
-							<input *ngIf="editing" class="edit-input" type="text"
-								[ngModel]="editValues['Vendor']"
-								(ngModelChange)="editValues['Vendor'] = $event">
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Type</span>
-							<span class="detail-value" *ngIf="!editing">{{ batchMeta.type }}</span>
-							<select *ngIf="editing" class="edit-select"
-								[ngModel]="editValues['Type']"
-								(ngModelChange)="editValues['Type'] = $event">
-								<option value="New Translation">New Translation</option>
-								<option value="Revision">Revision</option>
-								<option value="Re-translation">Re-translation</option>
-							</select>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Due Date</span>
-							<span class="detail-value" *ngIf="!editing">{{ batchMeta.dueDate }}</span>
-							<input *ngIf="editing" class="edit-input" type="date"
-								[ngModel]="editValues['DueDate']"
-								(ngModelChange)="editValues['DueDate'] = $event">
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Assigned To</span>
-							<span class="detail-value" *ngIf="!editing">{{ batchMeta.assignedTo }}</span>
-							<input *ngIf="editing" class="edit-input" type="text"
-								[ngModel]="editValues['AssignedTo']"
-								(ngModelChange)="editValues['AssignedTo'] = $event">
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Standards</span>
-							<span class="detail-value" *ngIf="!editing">{{ batchMeta.standardCount }}</span>
-							<input *ngIf="editing" class="edit-input" type="number"
-								[ngModel]="editValues['StandardCount']"
-								(ngModelChange)="editValues['StandardCount'] = $event">
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Days Elapsed</span>
-							<span class="detail-value">{{ batchMeta.daysElapsed }}</span>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Readiness</span>
-							<span class="detail-value" *ngIf="!editing">
-								<span class="readiness-badge" [ngClass]="'readiness-' + batchMeta.productionReadiness.toLowerCase().replace(' ', '-')">
-									{{ batchMeta.productionReadiness }}
-								</span>
-							</span>
-							<select *ngIf="editing" class="edit-select"
-								[ngModel]="editValues['ProductionReadiness']"
-								(ngModelChange)="editValues['ProductionReadiness'] = $event">
-								<option value="Ready">Ready</option>
-								<option value="Not Ready">Not Ready</option>
-								<option value="Partial">Partial</option>
-							</select>
-						</div>
-					</div>
-				</ng-container>
-
-				<!-- DYNAMIC METADATA (from pageFields — for any schema) -->
-				<ng-container *ngIf="!designationMeta && !batchMeta && !datedVersionMeta && pageFields.length > 0">
-					<div class="detail-grid">
-						<ng-container *ngFor="let field of nonTableFields">
-							<div class="detail-item" [class.span-2]="isWideField(field)">
-								<span class="detail-label">{{ field.label }}</span>
-
-								<!-- Read mode -->
-								<ng-container *ngIf="!editing">
-									<!-- Text / date -->
-									<span class="detail-value" *ngIf="field.type === 'text' || field.type === 'date'">
-										{{ field.value }}
-									</span>
-
-									<!-- Link -->
-									<span class="detail-value link" *ngIf="field.type === 'link'"
-										(click)="$event.stopPropagation()">
-										{{ field.value?.Name || field.value?.href || field.value }}
-									</span>
-
-									<!-- List (chips) -->
-									<span class="detail-value" *ngIf="field.type === 'list'">
-										<span class="chip" *ngFor="let item of field.value">{{ item }}</span>
-									</span>
-
-									<!-- Dropdown -->
-									<span class="detail-value" *ngIf="field.type === 'dropdown'">
-										{{ field.value }}
-									</span>
-
-									<!-- Rich text (show stripped) -->
-									<span class="detail-value" *ngIf="field.type === 'rich-text'"
-										[title]="field.value">
-										{{ stripHtml(field.value) | slice:0:120 }}
-									</span>
-								</ng-container>
-
-								<!-- Edit mode -->
-								<ng-container *ngIf="editing">
-									<input *ngIf="field.type === 'text' || field.type === 'link'" class="edit-input" type="text"
-										[ngModel]="editValues[field.name]"
-										(ngModelChange)="editValues[field.name] = $event">
-									<input *ngIf="field.type === 'date'" class="edit-input" type="date"
-										[ngModel]="editValues[field.name]"
-										(ngModelChange)="editValues[field.name] = $event">
-									<textarea *ngIf="field.type === 'rich-text'" class="edit-textarea"
-										[ngModel]="editValues[field.name]"
-										(ngModelChange)="editValues[field.name] = $event"></textarea>
-									<input *ngIf="field.type === 'dropdown'" class="edit-input" type="text"
-										[ngModel]="editValues[field.name]"
-										(ngModelChange)="editValues[field.name] = $event">
-									<input *ngIf="field.type === 'list'" class="edit-input" type="text"
-										placeholder="Comma-separated values"
-										[ngModel]="editValues[field.name]"
-										(ngModelChange)="editValues[field.name] = $event">
-								</ng-container>
-							</div>
-						</ng-container>
-					</div>
-
-					<!-- Tables -->
-					<ng-container *ngFor="let field of tableFields">
-						<div class="tm-section">
-							<button class="tm-toggle" (click)="$event.stopPropagation(); toggleTable(field.name)">
-								<ott-icon [name]="expandedTables[field.name] ? 'chevron-down' : 'chevron-right'" [size]="12"></ott-icon>
-								{{ field.label }}
-								<span class="tm-count" *ngIf="field.value?.length">{{ field.value.length }}</span>
-							</button>
-							<table class="tm-table" *ngIf="expandedTables[field.name]">
-								<thead>
-									<tr>
-										<th *ngFor="let col of getTableColumns(field.value)">{{ col }}</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr *ngFor="let row of field.value">
-										<td *ngFor="let col of getTableColumns(field.value)">
-											{{ getRowValue(row, col) }}
-										</td>
-									</tr>
-								</tbody>
-							</table>
-						</div>
-					</ng-container>
-				</ng-container>
-
-				<!-- Fallback for default/StandardCollection schemas with no dynamic fields -->
-				<ng-container *ngIf="(schema === 'default' || schema === 'StandardCollection') && pageFields.length === 0">
-					<div class="detail-grid">
-						<div class="detail-item">
-							<span class="detail-label">Name</span>
-							<span class="detail-value">{{ folderName }}</span>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">ID</span>
-							<span class="detail-value mono">{{ folderId }}</span>
-						</div>
-					</div>
-				</ng-container>
-
-				<!-- Edit mode footer -->
-				<div class="edit-footer" *ngIf="editing">
-					<button class="btn-cancel" (click)="$event.stopPropagation(); cancelEditing()">Cancel</button>
-					<button class="btn-save" (click)="$event.stopPropagation(); saveEdits()" [disabled]="saving">
-						<ott-icon *ngIf="saving" name="loader" [size]="13"></ott-icon>
-						{{ saving ? 'Saving...' : 'Save' }}
-					</button>
-				</div>
-			</div>
+			</ng-container>
 		</div>
 	`,
 	styles: [`
 		:host { display: block; font-family: var(--ott-font); }
 
-		.metadata-card {
-			border: 1px solid var(--ott-border-light);
-			border-radius: var(--ott-radius-md);
-			background: var(--ott-bg);
-			overflow: hidden;
-			transition: border-color 0.15s;
+		.mc {
+			background: var(--ott-bg-muted);
+			border-radius: var(--ott-radius-lg);
+			padding: 14px 18px 16px;
+			margin-bottom: 4px;
 		}
-		.metadata-card:hover { border-color: var(--ott-border); }
-		.metadata-card.editing { border-color: var(--ott-primary); }
+		.mc-editing {
+			outline: 2px solid var(--ott-primary);
+			outline-offset: -2px;
+		}
 
-		/* Summary row */
-		.card-summary {
-			display: flex; align-items: center; justify-content: space-between;
-			padding: 10px 14px; cursor: pointer; user-select: none;
-			transition: background 0.12s;
+		/* Header */
+		.mc-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 12px;
 		}
-		.card-summary:hover { background: var(--ott-bg-muted); }
-		.summary-left {
-			display: flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap;
+		.mc-label {
+			font-size: 11px;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			color: var(--ott-text-muted);
 		}
-		.summary-right {
-			display: flex; align-items: center; gap: 4px;
+		.mc-actions {
+			display: flex;
+			align-items: center;
+			gap: 6px;
 		}
-		.schema-badge {
-			font-size: var(--ott-font-size-xs); font-weight: 600; text-transform: uppercase;
-			letter-spacing: 0.5px; padding: 2px 7px;
-			border-radius: var(--ott-radius-sm);
-			background: var(--ott-primary-light); color: var(--ott-primary);
-			white-space: nowrap;
-		}
-		.summary-sep { color: var(--ott-border); font-size: var(--ott-font-size-xs); }
-		.summary-text { font-size: var(--ott-font-size-sm); color: var(--ott-text-secondary); white-space: nowrap; }
-		.summary-text.muted { color: var(--ott-text-muted); }
-		.lang-pills { display: flex; gap: 3px; }
-		.lang-pill {
-			font-size: var(--ott-font-size-xs); font-weight: 600; font-family: var(--ott-font-mono);
-			padding: 2px 6px; border-radius: var(--ott-radius-sm);
-			background: var(--ott-bg-subtle); color: var(--ott-text-secondary);
-		}
-		.expand-btn {
-			border: none; background: none; cursor: pointer;
-			color: var(--ott-text-muted); padding: 2px; display: flex;
-			transition: transform 0.2s, color 0.15s;
-		}
-		.expand-btn:hover { color: var(--ott-text); }
-		.expand-btn.rotated { transform: rotate(180deg); }
-
-		/* Edit mode button */
-		.edit-mode-btn {
-			border: none; background: none; cursor: pointer;
-			color: var(--ott-text-muted); padding: 3px; display: flex;
-			border-radius: var(--ott-radius-sm);
-			transition: color 0.15s, background 0.15s;
-		}
-		.edit-mode-btn:hover { color: var(--ott-primary); background: var(--ott-primary-light); }
-
-		/* Detail panel */
-		.card-details {
-			padding: 0 14px 14px;
-			border-top: 1px solid var(--ott-border-light);
-		}
-		.detail-grid {
-			display: grid; grid-template-columns: 1fr 1fr;
-			gap: 10px 24px; padding-top: 12px;
-		}
-		.detail-item { display: flex; flex-direction: column; gap: 1px; }
-		.detail-item.span-2 { grid-column: span 2; }
-		.detail-label {
-			font-size: var(--ott-font-size-xs); font-weight: 600; text-transform: uppercase;
-			letter-spacing: 0.4px; color: var(--ott-text-muted);
-		}
-		.detail-value {
-			font-size: var(--ott-font-size-base); color: var(--ott-text);
-			display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
-		}
-		.detail-value.mono, .mono { font-family: var(--ott-font-mono); }
-		.detail-value.link { color: var(--ott-primary); cursor: pointer; }
-		.detail-value.link:hover { text-decoration: underline; }
-		.edit-inline-btn {
-			border: none; background: none; cursor: pointer;
-			color: var(--ott-text-muted); padding: 1px;
-			border-radius: var(--ott-radius-sm); display: inline-flex;
-			transition: color 0.15s;
-		}
-		.edit-inline-btn:hover { color: var(--ott-primary); }
-
-		/* Edit controls */
-		.edit-input, .edit-select, .edit-textarea {
+		.mc-edit-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			border: none;
+			background: none;
+			cursor: pointer;
+			font-size: 12px;
 			font-family: var(--ott-font);
-			font-size: var(--ott-font-size-base);
+			font-weight: 500;
+			color: var(--ott-text-muted);
+			padding: 4px 8px;
+			border-radius: var(--ott-radius-sm);
+			transition: all 0.15s;
+		}
+		.mc-edit-btn:hover {
+			color: var(--ott-primary);
+			background: var(--ott-primary-light);
+		}
+		.mc-cancel-btn, .mc-save-btn {
+			font-family: var(--ott-font);
+			font-size: 12px;
+			font-weight: 500;
+			padding: 5px 12px;
+			border-radius: var(--ott-radius-sm);
+			cursor: pointer;
+			transition: all 0.15s;
+		}
+		.mc-cancel-btn {
+			border: 1px solid var(--ott-border);
+			background: var(--ott-bg);
+			color: var(--ott-text-secondary);
+		}
+		.mc-cancel-btn:hover { background: var(--ott-bg-hover); }
+		.mc-save-btn {
+			border: none;
+			background: var(--ott-primary);
+			color: white;
+		}
+		.mc-save-btn:hover { opacity: 0.9; }
+		.mc-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+		/* Grid */
+		.mc-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 12px 20px;
+		}
+
+		/* Fields */
+		.mc-field {
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+		}
+		.mc-field-span2 { grid-column: span 2; }
+		.mc-field-wide {
+			margin-top: 12px;
+		}
+		.mc-field-label {
+			font-size: 11px;
+			font-weight: 500;
+			text-transform: uppercase;
+			letter-spacing: 0.3px;
+			color: var(--ott-text-muted);
+		}
+		.mc-field-value {
+			font-size: 13px;
+			color: var(--ott-text);
+			line-height: 1.5;
+		}
+		.mc-field-value.mono { font-family: var(--ott-font-mono); }
+		.mc-field-notes {
+			font-size: 13px;
+			color: var(--ott-text-secondary);
+			line-height: 1.5;
+		}
+		.mc-link {
+			color: var(--ott-primary);
+			cursor: pointer;
+		}
+		.mc-link:hover { text-decoration: underline; }
+
+		/* Input controls */
+		.mc-input, .mc-select, .mc-textarea {
+			font-family: var(--ott-font);
+			font-size: 13px;
 			color: var(--ott-text);
 			background: var(--ott-bg);
 			border: 1px solid var(--ott-border);
@@ -494,102 +418,111 @@ import { ElementUpdate } from '../../services/metadata-lookup.service';
 			box-sizing: border-box;
 			transition: border-color 0.15s;
 		}
-		.edit-input:focus, .edit-select:focus, .edit-textarea:focus {
+		.mc-input:focus, .mc-select:focus, .mc-textarea:focus {
 			outline: none;
 			border-color: var(--ott-primary);
+			box-shadow: 0 0 0 2px var(--ott-ring);
 		}
-		.edit-input.wide { grid-column: span 2; }
-		.edit-textarea {
-			min-height: 60px;
+		.mc-textarea {
+			min-height: 56px;
 			resize: vertical;
 		}
 
-		/* Edit footer */
-		.edit-footer {
-			display: flex; justify-content: flex-end; gap: 8px;
-			margin-top: 14px; padding-top: 12px;
+		/* Badges */
+		.mc-badge {
+			display: inline-flex;
+			padding: 2px 7px;
+			border-radius: var(--ott-radius-sm);
+			font-size: 11px;
+			font-weight: 600;
+			background: var(--ott-primary-light);
+			color: var(--ott-primary);
+		}
+		.mc-chip {
+			display: inline-flex;
+			padding: 2px 7px;
+			border-radius: var(--ott-radius-full);
+			font-size: 11px;
+			font-weight: 500;
+			background: var(--ott-bg-subtle);
+			color: var(--ott-text-secondary);
+			margin-right: 4px;
+		}
+		.mc-status {
+			display: inline-flex;
+			padding: 2px 8px;
+			border-radius: var(--ott-radius-full);
+			font-size: 11px;
+			font-weight: 600;
+		}
+		.mc-status-ready { background: var(--ott-success-light); color: #166534; }
+		.mc-status-not-ready { background: #fef2f2; color: #991b1b; }
+		.mc-status-partial { background: var(--ott-warning-light); color: #92400e; }
+
+		/* Sections (tables) */
+		.mc-section {
+			margin-top: 14px;
+			padding-top: 12px;
 			border-top: 1px solid var(--ott-border-light);
 		}
-		.btn-cancel, .btn-save {
-			font-family: var(--ott-font);
-			font-size: var(--ott-font-size-sm);
-			font-weight: 500;
-			padding: 6px 14px;
-			border-radius: var(--ott-radius-sm);
-			cursor: pointer;
-			display: inline-flex; align-items: center; gap: 5px;
-			transition: background 0.15s, color 0.15s;
-		}
-		.btn-cancel {
-			border: 1px solid var(--ott-border);
-			background: var(--ott-bg);
-			color: var(--ott-text-secondary);
-		}
-		.btn-cancel:hover { background: var(--ott-bg-muted); }
-		.btn-save {
+		.mc-section-toggle {
+			display: flex;
+			align-items: center;
+			gap: 5px;
 			border: none;
-			background: var(--ott-primary);
-			color: white;
-		}
-		.btn-save:hover { opacity: 0.9; }
-		.btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
-
-		/* Chips for list fields */
-		.chip {
-			font-size: var(--ott-font-size-xs); font-weight: 500; padding: 2px 7px;
-			border-radius: var(--ott-radius-full);
-			background: var(--ott-bg-subtle); color: var(--ott-text-secondary);
-		}
-
-		/* Translation Maintenance / tables */
-		.tm-section { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--ott-border-light); }
-		.tm-toggle {
-			display: flex; align-items: center; gap: 5px;
-			border: none; background: none; cursor: pointer;
-			font-size: var(--ott-font-size-sm); font-weight: 600; font-family: var(--ott-font);
-			text-transform: uppercase; letter-spacing: 0.3px;
-			color: var(--ott-text-muted); padding: 0;
+			background: none;
+			cursor: pointer;
+			font-size: 12px;
+			font-weight: 600;
+			font-family: var(--ott-font);
+			text-transform: uppercase;
+			letter-spacing: 0.3px;
+			color: var(--ott-text-muted);
+			padding: 0;
 			transition: color 0.15s;
 		}
-		.tm-toggle:hover { color: var(--ott-text-secondary); }
-		.tm-count {
-			font-size: var(--ott-font-size-xs); font-weight: 700;
-			min-width: 18px; height: 18px;
-			display: inline-flex; align-items: center; justify-content: center;
-			background: var(--ott-bg-subtle); border-radius: var(--ott-radius-full);
+		.mc-section-toggle:hover { color: var(--ott-text-secondary); }
+		.mc-section-count {
+			font-size: 10px;
+			font-weight: 700;
+			min-width: 16px;
+			height: 16px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			background: var(--ott-bg-subtle);
+			border-radius: var(--ott-radius-full);
 			color: var(--ott-text-muted);
 		}
-		.tm-table {
-			width: 100%; border-collapse: collapse; font-size: var(--ott-font-size-base); margin-top: 6px;
+		.mc-table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 12px;
+			margin-top: 8px;
 		}
-		.tm-table th {
-			text-align: left; padding: 6px 8px; font-weight: 600;
-			color: var(--ott-text-muted); font-size: var(--ott-font-size-xs); text-transform: uppercase;
-			letter-spacing: 0.3px; border-bottom: 1px solid var(--ott-border-light);
-		}
-		.tm-table td {
-			padding: 7px 8px; color: var(--ott-text);
+		.mc-table th {
+			text-align: left;
+			padding: 6px 8px;
+			font-weight: 600;
+			color: var(--ott-text-muted);
+			font-size: 10px;
+			text-transform: uppercase;
+			letter-spacing: 0.3px;
 			border-bottom: 1px solid var(--ott-border-light);
 		}
-		.tm-table tr:last-child td { border-bottom: none; }
-		.compilations {
-			font-size: var(--ott-font-size-sm); color: var(--ott-text-muted);
-			max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+		.mc-table td {
+			padding: 7px 8px;
+			color: var(--ott-text);
+			border-bottom: 1px solid var(--ott-border-light);
 		}
-
-		/* Badges */
-		.vendor-badge {
-			display: inline-flex; padding: 2px 6px; border-radius: var(--ott-radius-sm);
-			font-size: var(--ott-font-size-xs); font-weight: 600; letter-spacing: 0.2px;
-			background: var(--ott-primary-light); color: var(--ott-primary);
+		.mc-table tr:last-child td { border-bottom: none; }
+		.mc-truncate {
+			max-width: 240px;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			color: var(--ott-text-muted);
 		}
-		.readiness-badge {
-			display: inline-flex; padding: 2px 7px; border-radius: var(--ott-radius-full);
-			font-size: var(--ott-font-size-xs); font-weight: 600;
-		}
-		.readiness-ready { background: var(--ott-success-light); color: #166534; }
-		.readiness-not-ready { background: #fef2f2; color: #991b1b; }
-		.readiness-partial { background: var(--ott-warning-light); color: #92400e; }
 	`]
 })
 export class FolderMetadataCardComponent {
@@ -603,23 +536,15 @@ export class FolderMetadataCardComponent {
 	@Output() navigateToCollection = new EventEmitter<string>();
 	@Output() metadataSave = new EventEmitter<{ pageId: string; elements: ElementUpdate[] }>();
 
-	expanded = false;
 	tmExpanded = false;
 	expandedTables: Record<string, boolean> = {};
 
-	/** Inline editing state */
 	editing = false;
 	saving = false;
 	editValues: Record<string, any> = {};
 
-	get schemaLabel(): string {
-		switch (this.schema) {
-			case 'DesignationCollection': return 'Designation Collection';
-			case 'StandardDatedVersion': return 'Standard Dated Version';
-			case 'TranslationBatch': return 'Translation Batch';
-			case 'StandardCollection': return 'Standard Collection';
-			default: return 'Folder';
-		}
+	get hasMetadata(): boolean {
+		return !!(this.designationMeta || this.datedVersionMeta || this.batchMeta || this.pageFields.length > 0);
 	}
 
 	get designationMeta(): DesignationCollectionMetadata | null {
@@ -634,12 +559,10 @@ export class FolderMetadataCardComponent {
 		return this.schema === 'TranslationBatch' ? this.metadata : null;
 	}
 
-	/** Non-table fields for the dynamic grid */
 	get nonTableFields(): CmsPageField[] {
 		return this.pageFields.filter(f => f.type !== 'table');
 	}
 
-	/** Table fields rendered as collapsible sections */
 	get tableFields(): CmsPageField[] {
 		return this.pageFields.filter(f => f.type === 'table');
 	}
@@ -655,8 +578,7 @@ export class FolderMetadataCardComponent {
 
 	getTableColumns(rows: any[]): string[] {
 		if (!rows || rows.length === 0) return [];
-		const first = rows[0];
-		return Object.keys(first).filter(k => !k.startsWith('_'));
+		return Object.keys(rows[0]).filter(k => !k.startsWith('_'));
 	}
 
 	getRowValue(row: any, col: string): string {
@@ -671,7 +593,6 @@ export class FolderMetadataCardComponent {
 		return html.replace(/<[^>]*>/g, '').trim();
 	}
 
-	/** Enter edit mode — populate editValues from current metadata */
 	startEditing(): void {
 		this.editValues = {};
 
@@ -698,7 +619,6 @@ export class FolderMetadataCardComponent {
 			this.editValues['StandardCount'] = this.batchMeta.standardCount;
 			this.editValues['ProductionReadiness'] = this.batchMeta.productionReadiness;
 		} else {
-			// Dynamic fields
 			for (const field of this.pageFields) {
 				if (field.type !== 'table') {
 					this.editValues[field.name] = field.value;
@@ -709,13 +629,11 @@ export class FolderMetadataCardComponent {
 		this.editing = true;
 	}
 
-	/** Cancel editing — discard changes */
 	cancelEditing(): void {
 		this.editing = false;
 		this.editValues = {};
 	}
 
-	/** Save edits — emit element updates for the parent to persist */
 	saveEdits(): void {
 		if (!this.metadataPageId) return;
 
@@ -730,7 +648,6 @@ export class FolderMetadataCardComponent {
 		});
 	}
 
-	/** Called by parent after save completes (success or failure) */
 	onSaveComplete(success: boolean): void {
 		this.saving = false;
 		if (success) {
