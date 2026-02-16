@@ -118,8 +118,8 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 					// Check if an enhanced folder view already exists for this folder
 					const existing = this.mainComponentService.getFolderView();
 					if (existing?.instance?.context?.id === ctx.id) {
-						// Same folder, re-emitted with enriched context (e.g. folderType added).
-						// Update context in-place and reload data — no destroy/recreate.
+						// Same folder, re-emitted with enriched context.
+						// Update in-place — no destroy/recreate.
 						existing.instance.context = ctx;
 						this.folderViewService.loadFolderView(ctx);
 					} else {

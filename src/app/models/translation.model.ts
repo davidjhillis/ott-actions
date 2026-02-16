@@ -131,16 +131,6 @@ export interface TMProject {
 }
 
 /**
- * Healthcheck status breakdown
- */
-export interface HealthcheckStatusEntry {
-	status: LifecycleStatus;
-	count: number;
-	percentage: number;
-	items: TranslatedStandardCollection[];
-}
-
-/**
  * Folder child item for contents tab
  */
 export interface FolderChildItem {
@@ -174,74 +164,14 @@ export interface FolderTab {
 }
 
 /**
- * Tab config by schema
+ * Standard OTT tabs — same for every OTT-managed folder.
+ * Folders without a metadata page use the native CMS view instead.
  */
-export const SCHEMA_TABS: Record<FolderSchema, FolderTab[]> = {
-	DesignationCollection: [
-		{ id: 'contents', label: 'Contents', icon: 'folder' },
-		{ id: 'translation', label: 'Translation', icon: 'languages' },
-		{ id: 'kanban', label: 'Kanban', icon: 'columns' },
-		{ id: 'healthcheck', label: 'Healthcheck', icon: 'circle-check' },
-		{ id: 'properties', label: 'Properties', icon: 'settings' }
-	],
-	StandardDatedVersion: [
-		{ id: 'contents', label: 'Contents', icon: 'folder' },
-		{ id: 'translation', label: 'Translation', icon: 'languages' },
-		{ id: 'properties', label: 'Properties', icon: 'settings' }
-	],
-	TranslationBatch: [
-		{ id: 'contents', label: 'Contents', icon: 'folder' },
-		{ id: 'kanban', label: 'Kanban', icon: 'columns' },
-		{ id: 'healthcheck', label: 'Healthcheck', icon: 'circle-check' },
-		{ id: 'properties', label: 'Properties', icon: 'settings' }
-	],
-	StandardCollection: [
-		{ id: 'contents', label: 'Contents', icon: 'folder' },
-		{ id: 'properties', label: 'Properties', icon: 'settings' },
-		{ id: 'report-number', label: 'Report Number', icon: 'hash' }
-	],
-	default: [
-		{ id: 'contents', label: 'Contents', icon: 'folder' },
-		{ id: 'properties', label: 'Properties', icon: 'settings' }
-	]
-};
-
-/**
- * Editorial status — simplified 4-state Kanban for MVP
- */
-export type EditorialStatus = 'Draft' | 'In Review' | 'Approved' | 'Published';
-
-export const EDITORIAL_STATUSES: EditorialStatus[] = [
-	'Draft', 'In Review', 'Approved', 'Published'
+export const OTT_FOLDER_TABS: FolderTab[] = [
+	{ id: 'contents', label: 'Contents', icon: 'folder' },
+	{ id: 'translation', label: 'Translation', icon: 'languages' },
+	{ id: 'properties', label: 'Properties', icon: 'settings' }
 ];
-
-export const EDITORIAL_STATUS_COLORS: Record<EditorialStatus, string> = {
-	'Draft': '#94a3b8',
-	'In Review': '#f59e0b',
-	'Approved': '#3b82f6',
-	'Published': '#22c55e'
-};
-
-/**
- * Map a CMS lifecycle status to simplified editorial status
- */
-export function mapLifecycleToEditorial(lifecycleStatus?: LifecycleStatus | string): EditorialStatus {
-	if (!lifecycleStatus) return 'Draft';
-	switch (lifecycleStatus) {
-		case 'In Quotation':
-			return 'Draft';
-		case 'In Translation':
-		case 'In QA':
-			return 'In Review';
-		case 'In Editorial Review':
-		case 'Published to ML':
-			return 'Approved';
-		case 'Published':
-			return 'Published';
-		default:
-			return 'Draft';
-	}
-}
 
 /**
  * Generic CMS page field for dynamic schema rendering

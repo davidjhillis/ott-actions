@@ -124,12 +124,6 @@ export class ThemeService {
 		iconStyle.textContent = OTT_ICON_OVERRIDES_CSS;
 		topDoc.head.appendChild(iconStyle);
 
-		// Hide native folder view immediately to prevent flash
-		const folderHideStyle = topDoc.createElement('style');
-		folderHideStyle.id = 'ott-folder-hide';
-		folderHideStyle.textContent = OTT_FOLDER_HIDE_CSS;
-		topDoc.head.appendChild(folderHideStyle);
-
 		this._injected = true;
 		console.log('[IGX-OTT] Theme injected into top frame');
 	}

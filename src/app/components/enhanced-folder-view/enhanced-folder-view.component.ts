@@ -12,8 +12,6 @@ import { FolderMetadataCardComponent } from './folder-metadata-card.component';
 import { FolderContentsTabComponent } from './folder-contents-tab.component';
 import { ReportNumberInlineComponent } from './report-number-inline.component';
 import { TranslationTabComponent } from './translation-tab.component';
-import { HealthcheckTabComponent } from './healthcheck-tab.component';
-import { KanbanTabComponent } from './kanban-tab.component';
 import { LucideIconComponent } from '../shared/lucide-icon.component';
 
 @Component({
@@ -26,9 +24,7 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 		FolderMetadataCardComponent,
 		FolderContentsTabComponent,
 		ReportNumberInlineComponent,
-		TranslationTabComponent,
-		HealthcheckTabComponent,
-		KanbanTabComponent
+		TranslationTabComponent
 	],
 	template: `
 		<div class="efv" *ngIf="viewData">
@@ -105,30 +101,12 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 					(addCollection)="onAddCollection()">
 				</ott-translation-tab>
 
-				<ott-kanban-tab
-					*ngIf="activeTab === 'kanban'"
-					[collections]="viewData.translatedCollections"
-					(statusChange)="onStatusChange($event)">
-				</ott-kanban-tab>
-
-				<ott-healthcheck-tab
-					*ngIf="activeTab === 'healthcheck'"
-					[healthcheck]="viewData.healthcheck"
-					[batchName]="getBatchName()">
-				</ott-healthcheck-tab>
-
 				<div *ngIf="activeTab === 'properties'" class="placeholder-tab">
 					<ott-icon name="settings" [size]="20" color="var(--ott-text-muted)"></ott-icon>
 					<p>Native CMS Properties panel</p>
 				</div>
 
-				<div *ngIf="activeTab === 'report-number'" class="inline-edit-tab">
-					<ott-report-number-inline
-						[currentNumber]="getReportNumber()"
-						(saved)="onReportNumberSaved($event)">
-					</ott-report-number-inline>
 				</div>
-			</div>
 		</div>
 	`,
 	styles: [`
@@ -314,7 +292,6 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 		switch (tabId) {
 			case 'contents': return this.viewData.children.length || null;
 			case 'translation': return this.viewData.translatedCollections.length || null;
-			case 'kanban': return this.viewData.translatedCollections.length || null;
 			default: return null;
 		}
 	}
@@ -365,12 +342,6 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 
 	onSelectionChange(items: FolderChildItem[]): void {
 		this.selectedItems = items;
-	}
-
-	onStatusChange(event: { itemId: string; newStatus: string }): void {
-		this.folderViewService.updateLifecycleStatus(event.itemId, event.newStatus as any).subscribe(ok => {
-			if (ok) this.notify.success(`Status updated`);
-		});
 	}
 
 	onReportNumberSaved(event: { reportNumber: string; effectiveDate: string }): void {
@@ -443,10 +414,4 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 		return '';
 	}
 
-	getBatchName(): string {
-		if (this.viewData?.metadata && 'batchId' in this.viewData.metadata) {
-			return (this.viewData.metadata as any).batchId || '';
-		}
-		return 'RWS 2025 New Translations';
-	}
 }

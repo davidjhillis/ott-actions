@@ -3,8 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideIconComponent } from '../shared/lucide-icon.component';
 import {
-	FolderSchema, DesignationCollectionMetadata, StandardDatedVersionMetadata,
-	TranslationBatchMetadata, CmsPageField
+	FolderSchema, DesignationCollectionMetadata, CmsPageField
 } from '../../models/translation.model';
 import { ElementUpdate } from '../../services/metadata-lookup.service';
 
@@ -110,129 +109,8 @@ import { ElementUpdate } from '../../services/metadata-lookup.service';
 				</div>
 			</ng-container>
 
-			<!-- Standard Dated Version -->
-			<ng-container *ngIf="datedVersionMeta">
-				<div class="mc-grid">
-					<div class="mc-field mc-field-span2">
-						<span class="mc-field-label">Standard Title</span>
-						<span class="mc-field-value" *ngIf="!editing">{{ datedVersionMeta.standardTitle || '—' }}</span>
-						<input *ngIf="editing" class="mc-input" type="text"
-							[ngModel]="editValues['StandardTitle']"
-							(ngModelChange)="editValues['StandardTitle'] = $event">
-					</div>
-					<div class="mc-field">
-						<span class="mc-field-label">Action Type</span>
-						<span class="mc-field-value" *ngIf="!editing">{{ datedVersionMeta.actionType || '—' }}</span>
-						<select *ngIf="editing" class="mc-select"
-							[ngModel]="editValues['ActionType']"
-							(ngModelChange)="editValues['ActionType'] = $event">
-							<option value="New Standard">New Standard</option>
-							<option value="Revision">Revision</option>
-							<option value="Reapproval">Reapproval</option>
-							<option value="Amendment">Amendment</option>
-							<option value="Withdrawal">Withdrawal</option>
-						</select>
-					</div>
-					<div class="mc-field">
-						<span class="mc-field-label">Approval Date</span>
-						<span class="mc-field-value" *ngIf="!editing">{{ datedVersionMeta.approvalDate || '—' }}</span>
-						<input *ngIf="editing" class="mc-input" type="date"
-							[ngModel]="editValues['ApprovalDate']"
-							(ngModelChange)="editValues['ApprovalDate'] = $event">
-					</div>
-					<div class="mc-field">
-						<span class="mc-field-label">Publication Date</span>
-						<span class="mc-field-value" *ngIf="!editing">{{ datedVersionMeta.publicationDate || '—' }}</span>
-						<input *ngIf="editing" class="mc-input" type="date"
-							[ngModel]="editValues['PublicationDate']"
-							(ngModelChange)="editValues['PublicationDate'] = $event">
-					</div>
-					<div class="mc-field" *ngIf="datedVersionMeta.designationCollectionName">
-						<span class="mc-field-label">Designation Collection</span>
-						<span class="mc-field-value mc-link" *ngIf="!editing"
-							(click)="navigateToCollection.emit(datedVersionMeta.designationCollectionId)">
-							{{ datedVersionMeta.designationCollectionName }}
-						</span>
-						<input *ngIf="editing" class="mc-input" type="text"
-							[ngModel]="editValues['DesignationCollectionName']"
-							(ngModelChange)="editValues['DesignationCollectionName'] = $event">
-					</div>
-				</div>
-			</ng-container>
-
-			<!-- Translation Batch -->
-			<ng-container *ngIf="batchMeta">
-				<div class="mc-grid">
-					<div class="mc-field">
-						<span class="mc-field-label">Batch ID</span>
-						<span class="mc-field-value mono" *ngIf="!editing">{{ batchMeta.batchId }}</span>
-						<input *ngIf="editing" class="mc-input" type="text"
-							[ngModel]="editValues['BatchID']"
-							(ngModelChange)="editValues['BatchID'] = $event">
-					</div>
-					<div class="mc-field">
-						<span class="mc-field-label">Vendor</span>
-						<span class="mc-field-value" *ngIf="!editing"><span class="mc-badge">{{ batchMeta.vendor }}</span></span>
-						<input *ngIf="editing" class="mc-input" type="text"
-							[ngModel]="editValues['Vendor']"
-							(ngModelChange)="editValues['Vendor'] = $event">
-					</div>
-					<div class="mc-field">
-						<span class="mc-field-label">Type</span>
-						<span class="mc-field-value" *ngIf="!editing">{{ batchMeta.type }}</span>
-						<select *ngIf="editing" class="mc-select"
-							[ngModel]="editValues['Type']"
-							(ngModelChange)="editValues['Type'] = $event">
-							<option value="New Translation">New Translation</option>
-							<option value="Revision">Revision</option>
-							<option value="Re-translation">Re-translation</option>
-						</select>
-					</div>
-					<div class="mc-field">
-						<span class="mc-field-label">Due Date</span>
-						<span class="mc-field-value" *ngIf="!editing">{{ batchMeta.dueDate || '—' }}</span>
-						<input *ngIf="editing" class="mc-input" type="date"
-							[ngModel]="editValues['DueDate']"
-							(ngModelChange)="editValues['DueDate'] = $event">
-					</div>
-					<div class="mc-field">
-						<span class="mc-field-label">Assigned To</span>
-						<span class="mc-field-value" *ngIf="!editing">{{ batchMeta.assignedTo || '—' }}</span>
-						<input *ngIf="editing" class="mc-input" type="text"
-							[ngModel]="editValues['AssignedTo']"
-							(ngModelChange)="editValues['AssignedTo'] = $event">
-					</div>
-					<div class="mc-field">
-						<span class="mc-field-label">Standards</span>
-						<span class="mc-field-value" *ngIf="!editing">{{ batchMeta.standardCount }}</span>
-						<input *ngIf="editing" class="mc-input" type="number"
-							[ngModel]="editValues['StandardCount']"
-							(ngModelChange)="editValues['StandardCount'] = $event">
-					</div>
-					<div class="mc-field">
-						<span class="mc-field-label">Days Elapsed</span>
-						<span class="mc-field-value">{{ batchMeta.daysElapsed }}</span>
-					</div>
-					<div class="mc-field">
-						<span class="mc-field-label">Readiness</span>
-						<span class="mc-field-value" *ngIf="!editing">
-							<span class="mc-status" [ngClass]="'mc-status-' + batchMeta.productionReadiness.toLowerCase().replace(' ', '-')">
-								{{ batchMeta.productionReadiness }}
-							</span>
-						</span>
-						<select *ngIf="editing" class="mc-select"
-							[ngModel]="editValues['ProductionReadiness']"
-							(ngModelChange)="editValues['ProductionReadiness'] = $event">
-							<option value="Ready">Ready</option>
-							<option value="Not Ready">Not Ready</option>
-							<option value="Partial">Partial</option>
-						</select>
-					</div>
-				</div>
-			</ng-container>
-
-			<!-- Dynamic fields (any schema) -->
-			<ng-container *ngIf="!designationMeta && !batchMeta && !datedVersionMeta && pageFields.length > 0">
+			<!-- Dynamic fields (extra schema fields not covered above) -->
+			<ng-container *ngIf="!designationMeta && pageFields.length > 0">
 				<div class="mc-grid">
 					<ng-container *ngFor="let field of nonTableFields">
 						<div class="mc-field" [class.mc-field-span2]="isWideField(field)">
@@ -544,19 +422,12 @@ export class FolderMetadataCardComponent {
 	editValues: Record<string, any> = {};
 
 	get hasMetadata(): boolean {
-		return !!(this.designationMeta || this.datedVersionMeta || this.batchMeta || this.pageFields.length > 0);
+		return !!(this.designationMeta || this.pageFields.length > 0);
 	}
 
 	get designationMeta(): DesignationCollectionMetadata | null {
-		return this.schema === 'DesignationCollection' ? this.metadata : null;
-	}
-
-	get datedVersionMeta(): StandardDatedVersionMetadata | null {
-		return this.schema === 'StandardDatedVersion' ? this.metadata : null;
-	}
-
-	get batchMeta(): TranslationBatchMetadata | null {
-		return this.schema === 'TranslationBatch' ? this.metadata : null;
+		// All OTT folders use the same schema — treat metadata as DesignationCollection
+		return this.metadata?.baseDesignation !== undefined ? this.metadata : null;
 	}
 
 	get nonTableFields(): CmsPageField[] {
@@ -604,20 +475,6 @@ export class FolderMetadataCardComponent {
 			this.editValues['ReportNumber'] = this.designationMeta.reportNumber || '';
 			this.editValues['SourceLocale'] = this.designationMeta.sourceLocale || '';
 			this.editValues['Notes'] = this.designationMeta.notes || '';
-		} else if (this.datedVersionMeta) {
-			this.editValues['StandardTitle'] = this.datedVersionMeta.standardTitle;
-			this.editValues['ActionType'] = this.datedVersionMeta.actionType;
-			this.editValues['ApprovalDate'] = this.datedVersionMeta.approvalDate || '';
-			this.editValues['PublicationDate'] = this.datedVersionMeta.publicationDate || '';
-			this.editValues['DesignationCollectionName'] = this.datedVersionMeta.designationCollectionName || '';
-		} else if (this.batchMeta) {
-			this.editValues['BatchID'] = this.batchMeta.batchId;
-			this.editValues['Vendor'] = this.batchMeta.vendor;
-			this.editValues['Type'] = this.batchMeta.type;
-			this.editValues['DueDate'] = this.batchMeta.dueDate || '';
-			this.editValues['AssignedTo'] = this.batchMeta.assignedTo || '';
-			this.editValues['StandardCount'] = this.batchMeta.standardCount;
-			this.editValues['ProductionReadiness'] = this.batchMeta.productionReadiness;
 		} else {
 			for (const field of this.pageFields) {
 				if (field.type !== 'table') {

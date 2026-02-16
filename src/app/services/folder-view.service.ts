@@ -9,8 +9,7 @@ import {
 	FolderSchema, FolderTab, FolderChildItem,
 	DesignationCollectionMetadata, StandardDatedVersionMetadata,
 	TranslationBatchMetadata, TranslatedStandardCollection,
-	TMProject, HealthcheckStatusEntry, LifecycleStatus,
-	LIFECYCLE_STATUSES, SCHEMA_TABS, CmsPageField
+	TMProject, LifecycleStatus, OTT_FOLDER_TABS, CmsPageField
 } from '../models/translation.model';
 
 export interface BreadcrumbSegment {
@@ -27,7 +26,6 @@ export interface FolderViewData {
 	metadata: DesignationCollectionMetadata | StandardDatedVersionMetadata | TranslationBatchMetadata | null;
 	translatedCollections: TranslatedStandardCollection[];
 	tmProjects: TMProject[];
-	healthcheck: HealthcheckStatusEntry[];
 	/** Dynamic fields parsed from CMS page data (for dynamic rendering) */
 	pageFields: CmsPageField[];
 	/** Raw page data from CMS */
@@ -102,7 +100,6 @@ export class FolderViewService {
 			metadata,
 			translatedCollections: [],
 			tmProjects: [],
-			healthcheck: [],
 			pageFields: this.buildPageFieldsFromModel(model),
 			rawPageData: null
 		};
@@ -256,7 +253,6 @@ export class FolderViewService {
 
 				// Extract translated collections from children if schema warrants it
 				const translatedCollections = this.extractTranslatedCollections(children, pageData);
-				const healthcheck = this.buildHealthcheck(translatedCollections);
 
 				const data: FolderViewData = {
 					schema,
@@ -266,7 +262,6 @@ export class FolderViewService {
 					metadata,
 					translatedCollections,
 					tmProjects: this.extractTmProjects(pageData),
-					healthcheck,
 					pageFields,
 					rawPageData: pageData
 				};
@@ -313,10 +308,10 @@ export class FolderViewService {
 	}
 
 	/**
-	 * Get tabs for a schema
+	 * Get tabs — same for every OTT-managed folder
 	 */
-	getTabsForSchema(schema: FolderSchema): FolderTab[] {
-		return SCHEMA_TABS[schema] || SCHEMA_TABS['default'];
+	getTabsForSchema(_schema: FolderSchema): FolderTab[] {
+		return OTT_FOLDER_TABS;
 	}
 
 	/**
@@ -394,7 +389,6 @@ export class FolderViewService {
 				const item = current.translatedCollections.find(c => c.id === itemId);
 				if (item) {
 					item.lifecycleStatus = newStatus;
-					current.healthcheck = this.buildHealthcheck(current.translatedCollections);
 					this.viewDataSubject.next({ ...current });
 				}
 			}
@@ -623,23 +617,9 @@ export class FolderViewService {
 			metadata: null,
 			translatedCollections: [],
 			tmProjects: [],
-			healthcheck: [],
 			pageFields: [],
 			rawPageData: null
 		};
-	}
-
-	private buildHealthcheck(collections: TranslatedStandardCollection[]): HealthcheckStatusEntry[] {
-		const total = collections.length;
-		return LIFECYCLE_STATUSES.map(status => {
-			const items = collections.filter(c => c.lifecycleStatus === status);
-			return {
-				status,
-				count: items.length,
-				percentage: total > 0 ? Math.round((items.length / total) * 100) : 0,
-				items
-			};
-		});
 	}
 
 	private extractLocale(name: string): string {
@@ -679,7 +659,6 @@ export class FolderViewService {
 		const schema = this.resolveSchema(ctx.schema);
 
 		const demoCollections = this.getDemoTranslatedCollections();
-		const healthcheck = this.buildHealthcheck(demoCollections);
 
 		// No "Home" — start from actual root folder
 		const breadcrumbs: BreadcrumbSegment[] = [
@@ -755,7 +734,6 @@ export class FolderViewService {
 			metadata,
 			translatedCollections: demoCollections,
 			tmProjects,
-			healthcheck,
 			pageFields,
 			rawPageData: null
 		};
