@@ -164,25 +164,40 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 		}
 	}
 
+	/** Generation counter to cancel stale file-bar polling loops */
+	private fileBarPollGen = 0;
+
 	/**
-	 * Polls for the CMS <assetpane-hub> element to appear, then injects the file bar.
-	 * Retries every 150ms up to 3 seconds to handle variable CMS render timing.
+	 * Polls for a CMS content container to appear, then injects the file bar.
+	 * Tries multiple selectors since file assets may use different containers
+	 * than folder views. Retries every 200ms up to 4 seconds.
 	 */
 	private waitForAssetPaneThenInjectFileBar(elapsed = 0): void {
-		const maxWait = 3000;
-		const interval = 150;
-		const topWindow = window.top as any;
-		const hub = topWindow?.document?.querySelector('assetpane-hub');
+		const gen = ++this.fileBarPollGen;
+		this.pollForFileBarContainer(gen, 0);
+	}
 
-		if (hub) {
+	private pollForFileBarContainer(gen: number, elapsed: number): void {
+		if (gen !== this.fileBarPollGen) return; // stale poll
+
+		const maxWait = 4000;
+		const interval = 200;
+		const topWindow = window.top as any;
+
+		// Try multiple selectors — file assets may not have assetpane-hub
+		const found = topWindow?.document?.querySelector('assetpane-hub')
+			|| topWindow?.document?.querySelector('#globalTabContainer .splitcontainer split split-area:last-of-type')
+			|| topWindow?.document?.querySelector('#globalTabContainer');
+
+		if (found) {
 			this.mainComponentService.injectFileBar();
 			return;
 		}
 
 		if (elapsed < maxWait) {
-			setTimeout(() => this.waitForAssetPaneThenInjectFileBar(elapsed + interval), interval);
+			setTimeout(() => this.pollForFileBarContainer(gen, elapsed + interval), interval);
 		} else {
-			console.warn('[IGX-OTT] Timed out waiting for CMS <assetpane-hub> to render for file bar');
+			console.warn('[IGX-OTT] Timed out waiting for CMS content container for file bar');
 		}
 	}
 

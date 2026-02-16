@@ -322,7 +322,10 @@ export class MainComponentService extends ComponentBase {
 	/**
 	 * Injects the File Bar into the CMS main content area.
 	 * Called when a file asset (non-folder) is selected.
-	 * Inserts as first child of assetpane-hub.
+	 *
+	 * Strategy: find the best injection point in the CMS DOM, trying
+	 * multiple selectors since file asset views may use different
+	 * containers than folder views.
 	 */
 	public injectFileBar(): void {
 		const ctx = this.assetContextService.getCurrentContext();
@@ -334,26 +337,45 @@ export class MainComponentService extends ComponentBase {
 		const topWindow = window.top as any;
 		if (!topWindow) return;
 
-		// Find assetpane-hub in the CMS DOM
-		const hub = topWindow.document.querySelector('assetpane-hub') as HTMLElement;
-		if (!hub) {
-			console.warn('[IGX-OTT] Could not find <assetpane-hub> for file bar injection');
+		// Try multiple injection strategies in order of preference:
+		// 1. assetpane-hub — the primary asset content container
+		// 2. The right-side split-area (second one in the split container)
+		// 3. #globalTabContainer as a broad fallback
+		const selectors = [
+			'assetpane-hub',
+			'#globalTabContainer .splitcontainer split split-area:last-of-type',
+			'#globalTabContainer .splitcontainer split split-area + split-area',
+			'#globalTabContainer'
+		];
+
+		let container: HTMLElement | null = null;
+		let selectorUsed = '';
+		for (const sel of selectors) {
+			container = topWindow.document.querySelector(sel) as HTMLElement;
+			if (container) {
+				selectorUsed = sel;
+				break;
+			}
+		}
+
+		if (!container) {
+			console.warn('[IGX-OTT] Could not find any injection container for file bar');
 			return;
 		}
 
 		// Create host element
 		const host = topWindow.document.createElement('div');
 		host.id = 'igx-ott-file-bar';
-		host.style.cssText = 'position:relative;z-index:1;width:100%;';
+		host.style.cssText = 'position:relative;z-index:10;width:100%;';
 
-		// Insert as first child of assetpane-hub
-		hub.insertBefore(host, hub.firstChild);
+		// Insert as first child of the container
+		container.insertBefore(host, container.firstChild);
 
 		// Create the File Bar component
 		this.fileBarRef = this.dynamicComponentService.createComponent(AssetFileBarComponent, host);
 		this.fileBarRef.instance.context = ctx;
 
-		console.log(`[IGX-OTT] File Bar injected for: ${ctx.name} (${ctx.id})`);
+		console.log(`[IGX-OTT] File Bar injected for: ${ctx.name} (${ctx.id}) [container: ${selectorUsed}]`);
 	}
 
 	/**

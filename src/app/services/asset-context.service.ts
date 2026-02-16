@@ -98,16 +98,20 @@ export class AssetContextService implements OnDestroy {
 			return;
 		}
 
-		// Try DAM asset pattern: assets/a_123
-		const assetMatch = url.match(/assets\/(a_\d+)/i);
+		// Try DAM asset pattern: assets/a_123 or assets/a/123 or just a_123
+		const assetMatch = url.match(/assets\/(a_\d+)/i)
+			|| url.match(/assets\/(a\/\d+)/i)
+			|| url.match(/\b(a_\d+)\b/i);
 		if (assetMatch) {
-			const urlId = assetMatch[1];
+			// Normalise to underscore format (a_85)
+			const urlId = assetMatch[1].replace('/', '_');
 			const apiId = urlId.replace('_', '/');
 			// Emit provisional non-folder context immediately so subscribers
 			// (e.g. folder view) can tear down before the async GetAssetInfo returns.
 			if (this.contextSubject.value?.isFolder) {
 				this.contextSubject.next({ id: apiId, name: urlId, isFolder: false, path: '' });
 			}
+			console.log(`[IGX-OTT] Asset match: ${assetMatch[0]} → urlId=${urlId}, apiId=${apiId}`);
 			this.resolveAsset(urlId);
 			return;
 		}
@@ -120,8 +124,7 @@ export class AssetContextService implements OnDestroy {
 		}
 
 		// No match — always clear context.
-		// Previous logic guarded on !isFolder, but that left stale folder context
-		// when navigating from a folder to any non-matching URL.
+		console.log(`[IGX-OTT] No pattern matched URL: ${url}`);
 		this.contextSubject.next(null);
 		this.currentXid = undefined;
 	}
