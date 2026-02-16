@@ -167,81 +167,103 @@ export class AssetContextService implements OnDestroy {
 
 	/**
 	 * Resolve a DAM asset by ID (URL format: a_17 → API format: a/17).
-	 * Reads asset name synchronously from NG_REF.currentContent.Model first,
-	 * then tries the async GetAssetInfo call for full metadata.
+	 *
+	 * Reads asset metadata from NG_REF.currentContent.Model with retry.
+	 * The postMessage GetAssetInfo call is unreliable (fails with TypeError
+	 * in the current CMS version), so we rely on the NG_REF sync read.
+	 *
+	 * Key: NG_REF `Name` is the display name (no extension), but `FileName`
+	 * and the path include the extension needed for "Open in Word" matching.
 	 */
 	private resolveAsset(urlId: string): void {
 		if (urlId === this.currentXid) return;
 		this.currentXid = urlId;
 
-		// Convert URL format (a_17) to API format (a/17)
 		const apiId = urlId.replace('_', '/');
-
-		// Try sync read from NG_REF with a short delay for CMS to update the model.
-		// Also attempt the async GetAssetInfo as fallback.
 		const gen = this.navGeneration;
 		this.tryReadAssetFromNgRef(apiId, urlId, gen, 0);
-
-		// Async fallback: call GetAssetInfo via postMessage (may fail in some CMS versions)
-		this.cms.callService<any>({
-			service: 'AssetServices',
-			action: 'GetAssetInfo',
-			args: [apiId]
-		}).subscribe({
-			next: (info) => {
-				const ctx: AssetContext = {
-					id: apiId,
-					name: info?.Name || info?.FileName || urlId,
-					isFolder: false,
-					path: info?.Path || info?.FolderPath || '',
-					schema: info?.Schema || info?.AssetType || 'Asset',
-					workflowStatus: info?.WorkflowStatus || undefined,
-					parentId: info?.FolderId || info?.ParentId || undefined,
-				};
-				this.contextSubject.next(ctx);
-				console.log(`[IGX-OTT] Asset context: ${ctx.name} (${apiId})`);
-			},
-			error: () => {
-				// Fallback: basic context from URL
-				this.contextSubject.next({
-					id: apiId,
-					name: urlId,
-					isFolder: false,
-					path: ''
-				});
-				console.log(`[IGX-OTT] Asset context (fallback): ${urlId}`);
-			}
-		});
 	}
 
 	/**
 	 * Attempt to read asset metadata from NG_REF.currentContent.Model.
-	 * Retries up to 1s (5 x 200ms) for CMS to populate the model.
-	 * If the model has a name, emits an enriched context (overriding the
-	 * fallback `a_85` name from the async error path).
+	 * Retries up to 1.5s (8 x 200ms) for CMS to populate the model.
+	 *
+	 * Resolves the full filename (with extension) by checking:
+	 *   1. model.FileName (has extension, e.g. "ASTM Word Doc.docx")
+	 *   2. model.Name + model.Extension (e.g. "ASTM Word Doc" + ".docx")
+	 *   3. Filename extracted from model.Path or model.CurrentUrl
+	 *   4. model.Name as last resort (no extension, "Open in Word" won't show)
 	 */
 	private tryReadAssetFromNgRef(apiId: string, urlId: string, gen: number, attempt: number): void {
 		if (gen !== this.navGeneration) return;
 
 		const model = (window.top as any)?.NG_REF?.currentContent?.Model?._value;
-		const name = model?.Name || model?.FileName;
 
-		if (name) {
-			const ctx: AssetContext = {
-				id: apiId,
-				name,
-				isFolder: false,
-				path: model?.Path || model?.FolderPath || '',
-				schema: model?.SchemaName || model?.AssetType || 'Asset',
-				workflowStatus: model?.WorkflowStatus || undefined,
-				parentId: model?.FolderId || model?.ParentId || undefined,
-			};
-			this.contextSubject.next(ctx);
-			console.log(`[IGX-OTT] Asset context (NG_REF): ${name} (${apiId})`);
-		} else if (attempt < 5) {
-			setTimeout(() => this.tryReadAssetFromNgRef(apiId, urlId, gen, attempt + 1), 200);
+		// Need at least a name from the model
+		const displayName = model?.Name || model?.FileName;
+		if (!displayName) {
+			if (attempt < 8) {
+				setTimeout(() => this.tryReadAssetFromNgRef(apiId, urlId, gen, attempt + 1), 200);
+			} else {
+				// All retries exhausted — emit basic context from URL ID
+				this.contextSubject.next({
+					id: apiId, name: urlId, isFolder: false, path: ''
+				});
+				console.log(`[IGX-OTT] Asset context (exhausted retries): ${urlId}`);
+			}
+			return;
 		}
-		// If all retries fail, the async GetAssetInfo (or its error fallback) handles it
+
+		// Resolve the full filename WITH extension
+		const fullName = this.resolveAssetFileName(model, displayName);
+		const path = model?.Path || model?.FolderPath || model?.CurrentUrl || '';
+
+		const ctx: AssetContext = {
+			id: apiId,
+			name: fullName,
+			isFolder: false,
+			path,
+			schema: model?.SchemaName || model?.AssetType || 'Asset',
+			workflowStatus: model?.WorkflowStatus || undefined,
+			parentId: model?.FolderId || model?.ParentId || undefined,
+		};
+		this.contextSubject.next(ctx);
+		console.log(`[IGX-OTT] Asset context (NG_REF): "${fullName}" (${apiId}), path="${path}"`);
+	}
+
+	/**
+	 * Extract the best filename (with extension) from the NG_REF model.
+	 */
+	private resolveAssetFileName(model: any, displayName: string): string {
+		// 1. FileName property (typically has extension)
+		if (model?.FileName && model.FileName.includes('.')) {
+			return model.FileName;
+		}
+
+		// 2. Name already has extension
+		if (displayName.includes('.')) {
+			return displayName;
+		}
+
+		// 3. Separate Extension property
+		const ext = model?.Extension || model?.FileExtension || model?.ContentExtension;
+		if (ext) {
+			const dotExt = ext.startsWith('.') ? ext : '.' + ext;
+			return displayName + dotExt;
+		}
+
+		// 4. Extract filename from Path (e.g. "~/ASTM.../ASTM Word Doc.docx")
+		const path = model?.Path || model?.FolderPath || model?.CurrentUrl || '';
+		if (path) {
+			const segments = path.replace(/\\/g, '/').split('/');
+			const lastSegment = segments[segments.length - 1];
+			if (lastSegment && lastSegment.includes('.')) {
+				return lastSegment;
+			}
+		}
+
+		// 5. Fallback: display name without extension
+		return displayName;
 	}
 
 	/**
