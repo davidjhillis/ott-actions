@@ -29,6 +29,16 @@ nav-button span.igx-fa-asset-tree {
 }
 `;
 
+/**
+ * Hide the native CMS <folder-view> immediately when the OTT module loads.
+ * This prevents a flash of the native folder grid before the Enhanced Folder View
+ * replaces it. The OTT injectEnhancedFolderView() also sets display:none on the
+ * element, but this CSS rule catches it sooner (before JS polling finds it).
+ */
+const OTT_FOLDER_HIDE_CSS = `
+folder-view { display: none !important; }
+`;
+
 const OTT_THEME_CSS = `
 :root {
   --ott-font: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -113,6 +123,12 @@ export class ThemeService {
 		iconStyle.id = 'ott-icon-overrides';
 		iconStyle.textContent = OTT_ICON_OVERRIDES_CSS;
 		topDoc.head.appendChild(iconStyle);
+
+		// Hide native folder view immediately to prevent flash
+		const folderHideStyle = topDoc.createElement('style');
+		folderHideStyle.id = 'ott-folder-hide';
+		folderHideStyle.textContent = OTT_FOLDER_HIDE_CSS;
+		topDoc.head.appendChild(folderHideStyle);
 
 		this._injected = true;
 		console.log('[IGX-OTT] Theme injected into top frame');

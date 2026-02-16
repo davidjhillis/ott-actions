@@ -6,6 +6,7 @@ import { DynamicComponentService } from './services/dynamic-component.service';
 import { ActionExecutorService } from './services/action-executor.service';
 import { ActionConfigService } from './services/action-config.service';
 import { AssetContextService } from './services/asset-context.service';
+import { FolderViewService } from './services/folder-view.service';
 import { ThemeService } from './services/theme.service';
 import { ActionBarComponent } from './components/action-bar/action-bar.component';
 import { ActionManagerComponent } from './components/action-admin/action-manager.component';
@@ -46,7 +47,8 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 		private actionExecutorService: ActionExecutorService,
 		public actionConfigService: ActionConfigService,
 		private assetContextService: AssetContextService,
-		private themeService: ThemeService
+		private themeService: ThemeService,
+		private folderViewService: FolderViewService
 	) {
 		super();
 
@@ -104,11 +106,25 @@ export class AppComponent extends ComponentBase implements AfterViewInit, OnDest
 		// Folder → inject enhanced folder view, destroy file bar
 		// File asset → inject file bar, destroy folder view
 		// null → destroy both
+		//
+		// Optimization: when the same folder ID re-emits with updated folderType
+		// (e.g. after metadata lookup), update the existing component in-place
+		// instead of destroying and recreating it. This prevents a visible flash.
 		this.observableSubTeardowns.push(
 			this.assetContextService.context$.subscribe(ctx => {
 				if (ctx?.isFolder) {
 					this.mainComponentService.destroyFileBar();
-					this.waitForFolderViewThenInject();
+
+					// Check if an enhanced folder view already exists for this folder
+					const existing = this.mainComponentService.getFolderView();
+					if (existing?.instance?.context?.id === ctx.id) {
+						// Same folder, re-emitted with enriched context (e.g. folderType added).
+						// Update context in-place and reload data — no destroy/recreate.
+						existing.instance.context = ctx;
+						this.folderViewService.loadFolderView(ctx);
+					} else {
+						this.waitForFolderViewThenInject();
+					}
 				} else if (ctx && !ctx.isFolder) {
 					this.mainComponentService.destroyEnhancedFolderView();
 					this.waitForAssetPaneThenInjectFileBar();
