@@ -100,7 +100,7 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 					[translatedCollections]="viewData.translatedCollections"
 					[tmProjects]="viewData.tmProjects"
 					[selectedItems]="selectedItems"
-					(addToProject)="onAddToProject($event)"
+					(sendToTranslation)="onSendToTranslation()"
 					(uploadSourceFiles)="onUploadSourceFiles()"
 					(addCollection)="onAddCollection()">
 				</ott-translation-tab>
@@ -383,9 +383,20 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 		});
 	}
 
-	onAddToProject(event: { projectId: string | null; items: FolderChildItem[]; isNew: boolean }): void {
-		console.log(`[IGX-OTT] Add to project:`, event);
-		this.notify.success(`Added ${event.items.length} items to ${event.isNew ? 'new' : 'existing'} project`);
+	onSendToTranslation(): void {
+		console.log(`[IGX-OTT] Opening Send to Translation modal with ${this.selectedItems.length} items`);
+		this.actionExecutor.execute({
+			id: 'send-to-translation',
+			label: 'Send to Translation',
+			icon: 'send',
+			handler: { type: 'modal', componentId: 'send-to-translation' },
+			enabled: true,
+			groupId: 'translation',
+			order: 0
+		}, {
+			selectedItems: this.selectedItems,
+			tmProjects: this.viewData?.tmProjects || []
+		});
 	}
 
 	onUploadSourceFiles(): void {

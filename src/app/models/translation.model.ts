@@ -99,6 +99,20 @@ export interface TranslatedStandardCollection {
 	daysElapsed: number;
 	priority: 'Low' | 'Medium' | 'High';
 	designation?: string;
+	outdated?: boolean;
+}
+
+/**
+ * Data passed through the Send to Translation wizard
+ */
+export interface TranslationSubmission {
+	files: FolderChildItem[];
+	projectId: string | null;
+	projectName: string;
+	vendor: string;
+	locale: string;
+	dueDate?: string;
+	isNewProject: boolean;
 }
 
 /**
@@ -109,9 +123,11 @@ export interface TMProject {
 	name: string;
 	locale: string;
 	language: string;
+	vendor: string;
 	itemCount: number;
 	dueDate?: string;
 	status: 'Open' | 'In Progress' | 'Completed';
+	tmAppUrl?: string;
 }
 
 /**

@@ -605,9 +605,11 @@ export class FolderViewService {
 			name: p.Name || p.name || '',
 			locale: p.Locale || p.locale || '',
 			language: p.Language || p.language || '',
+			vendor: p.Vendor || p.vendor || 'SDL',
 			itemCount: parseInt(p.ItemCount || p.itemCount || '0', 10),
 			dueDate: p.DueDate || p.dueDate,
-			status: p.Status || p.status || 'Open'
+			status: p.Status || p.status || 'Open',
+			tmAppUrl: p.TmAppUrl || p.tmAppUrl
 		}));
 	}
 
@@ -721,8 +723,10 @@ export class FolderViewService {
 		};
 
 		const tmProjects: TMProject[] = [
-			{ id: 'tm-1', name: 'RWS 2025 pt-BR Migration', locale: 'pt-BR', language: 'Portuguese (Brazil)', itemCount: 31, dueDate: '1/31/2026', status: 'In Progress' },
-			{ id: 'tm-2', name: 'SDL_Nov_28_2025', locale: 'es-CL', language: 'Spanish (Chile)', itemCount: 1, dueDate: '12/22/2025', status: 'Open' }
+			{ id: 'tm-1', name: 'RWS 2025 pt-BR Migration', locale: 'pt-BR', language: 'Portuguese (Brazil)', vendor: 'RWS', itemCount: 31, dueDate: '3/15/2026', status: 'In Progress', tmAppUrl: 'https://tm.ingeniux.com/projects/tm-1' },
+			{ id: 'tm-2', name: 'SDL es-CL Weekly Batch', locale: 'es-CL', language: 'Spanish (Chile)', vendor: 'SDL', itemCount: 12, dueDate: '2/28/2026', status: 'Open', tmAppUrl: 'https://tm.ingeniux.com/projects/tm-2' },
+			{ id: 'tm-3', name: 'ja-JP Q1 2026', locale: 'ja-JP', language: 'Japanese', vendor: 'XTM', itemCount: 8, dueDate: '4/1/2026', status: 'Open', tmAppUrl: 'https://tm.ingeniux.com/projects/tm-3' },
+			{ id: 'tm-4', name: 'de-DE Standards 2026', locale: 'de-DE', language: 'German', vendor: 'Lionbridge', itemCount: 4, dueDate: '5/15/2026', status: 'Open', tmAppUrl: 'https://tm.ingeniux.com/projects/tm-4' }
 		];
 
 		// Demo page fields for dynamic rendering
@@ -777,6 +781,8 @@ export class FolderViewService {
 				const desig = designations[i % designations.length];
 				const locale = locales[i % locales.length];
 				const ver = 20 + (i % 6);
+				// Mark ~15% of non-Published items as outdated (English version newer)
+				const isOutdated = statuses[si] !== 'Published' && i % 7 === 0;
 				collections.push({
 					id: `tsc-${idCounter++}`,
 					name: `ASTM_${desig}-${ver}__${locale}`,
@@ -790,7 +796,8 @@ export class FolderViewService {
 					assignee: assignees[i % assignees.length],
 					daysElapsed: 30 + (i * 3) % 120,
 					priority: i % 5 === 0 ? 'High' : 'Medium',
-					designation: `${desig}-${ver}`
+					designation: `${desig}-${ver}`,
+					outdated: isOutdated
 				});
 			}
 		}

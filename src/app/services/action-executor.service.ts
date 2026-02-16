@@ -31,14 +31,15 @@ export class ActionExecutorService {
 	) { }
 
 	/**
-	 * Executes an action based on its definition
+	 * Executes an action based on its definition.
+	 * Optional extraData is passed as @Input() properties to modal/panel components.
 	 */
-	public execute(action: ActionDefinition): void {
+	public execute(action: ActionDefinition, extraData?: Record<string, any>): void {
 		console.log(`[IGX-OTT] Executing action: ${action.id} (type: ${action.handler.type})`);
 
 		switch (action.handler.type) {
 			case 'modal':
-				this.openModal(action);
+				this.openModal(action, extraData);
 				break;
 			case 'panel':
 				this.openPanel(action);
@@ -58,9 +59,10 @@ export class ActionExecutorService {
 	}
 
 	/**
-	 * Opens a modal for the given action
+	 * Opens a modal for the given action.
+	 * Extra data properties are set on the component instance as @Input() values.
 	 */
-	private openModal(action: ActionDefinition): void {
+	private openModal(action: ActionDefinition, extraData?: Record<string, any>): void {
 		// Close any existing modal
 		this.closeActiveModal();
 
@@ -91,6 +93,15 @@ export class ActionExecutorService {
 
 		// Pass asset context if the component accepts it
 		this.passContextToComponent();
+
+		// Pass extra data as @Input() properties
+		if (extraData && this.activeModalRef) {
+			for (const [key, value] of Object.entries(extraData)) {
+				if (key in this.activeModalRef.instance) {
+					this.activeModalRef.instance[key] = value;
+				}
+			}
+		}
 
 		// Wire up close event
 		if (this.activeModalRef.instance.close) {
