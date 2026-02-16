@@ -86,7 +86,9 @@ export class AssetContextService implements OnDestroy {
 	 * Extract ID from URL and fetch properties.
 	 * Supports: site/{xID}, assets/{a_ID}, assets/{assetfolders_ID}
 	 */
-	private resolveFromUrl(url: string): void {
+	private resolveFromUrl(rawUrl: string): void {
+		// Decode URL-encoded characters (e.g. a%2F87 → a/87)
+		const url = decodeURIComponent(rawUrl);
 		console.log(`[IGX-OTT] resolveFromUrl: ${url}`);
 		this.navGeneration++;
 
