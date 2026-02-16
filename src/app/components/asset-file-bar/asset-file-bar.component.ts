@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideIconComponent } from '../shared/lucide-icon.component';
 import { AssetContext } from '../../models/asset-context.model';
@@ -143,18 +143,25 @@ const EXT_MAP: Record<string, AppMapping> = {
 		}
 	`]
 })
-export class AssetFileBarComponent implements OnChanges {
-	@Input() context: AssetContext | null = null;
+export class AssetFileBarComponent {
+	private _context: AssetContext | null = null;
+
+	/** Input setter — resolves file type immediately when set programmatically
+	 *  (ngOnChanges does NOT fire for dynamically created components). */
+	@Input()
+	set context(value: AssetContext | null) {
+		this._context = value;
+		if (value) {
+			this.resolveFileType();
+		}
+	}
+	get context(): AssetContext | null {
+		return this._context;
+	}
 
 	extension = '';
 	fileIcon = 'file';
 	appMapping: AppMapping | null = null;
-
-	ngOnChanges(changes: SimpleChanges): void {
-		if (changes['context'] && this.context) {
-			this.resolveFileType();
-		}
-	}
 
 	private resolveFileType(): void {
 		if (!this.context) return;
