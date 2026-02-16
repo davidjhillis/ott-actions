@@ -290,7 +290,9 @@ export class CmsApiService {
 	 */
 	postWcf<T>(service: string, action: string, data: any): Observable<T> {
 		const url = `${this.baseUrl}/REST/${service}.svc/${action}`;
-		return this.http.post<T>(url, { data }, { headers: this.getHeaders() }).pipe(
+		console.log(`[IGX-OTT] WCF POST ${service}.${action}`, JSON.stringify(data).slice(0, 500));
+		return this.http.post<T>(url, data, { headers: this.getHeaders() }).pipe(
+			tap(res => console.log(`[IGX-OTT] WCF POST response:`, res)),
 			catchError(err => {
 				console.warn(`[IGX-OTT] WCF POST failed: ${service}.${action}`, err);
 				return throwError(() => err);

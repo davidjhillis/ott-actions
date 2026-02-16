@@ -161,25 +161,10 @@ export class MetadataLookupService {
 			return of(undefined);
 		}
 
-		// Build the elements object for postMessage bridge
-		const elementObj: Record<string, any> = {};
-		for (const el of elements) {
-			elementObj[el.name] = el.value;
-		}
-
-		// Try postMessage bridge first (production CMS)
-		return this.cms.callService<any>({
-			service: 'PageCommandsServices',
-			action: 'SavePartial',
-			args: [pageId, elementObj]
-		}).pipe(
-			map(() => undefined),
-			tap(() => console.log(`[IGX-OTT] Metadata saved for ${pageId}`)),
-			catchError(err => {
-				console.warn(`[IGX-OTT] postMessage SavePartial failed, trying REST API:`, err);
-				return this.saveViaRestApi(pageId, elements);
-			})
-		);
+		// Always use REST API for saves — postMessage SavePartial format
+		// is unreliable (requires FullFieldId UIDs, not simple key-value).
+		console.log(`[IGX-OTT] Saving ${elements.length} elements to ${pageId} via REST`);
+		return this.saveViaRestApi(pageId, elements);
 	}
 
 	/**
@@ -190,13 +175,18 @@ export class MetadataLookupService {
 		// First read the page XML to get element UIDs
 		return this.cmsApi.getPageData(pageId).pipe(
 			switchMap(pageData => {
+				console.log(`[IGX-OTT] Page data for ${pageId}:`, Object.keys(pageData.Elements || {}));
+
 				const saveElements = elements
 					.map(el => {
 						const uid = pageData.Elements?.[`__uid_${el.name}`];
 						if (!uid) {
-							console.warn(`[IGX-OTT] No UID found for element ${el.name}`);
+							console.warn(`[IGX-OTT] No UID found for element "${el.name}" (available UIDs: ${
+								Object.keys(pageData.Elements || {}).filter(k => k.startsWith('__uid_')).join(', ')
+							})`);
 							return null;
 						}
+						console.log(`[IGX-OTT] Element "${el.name}" → UID ${uid} = "${el.value}"`);
 						return {
 							FullFieldId: [uid],
 							Attributes: [],
@@ -206,6 +196,7 @@ export class MetadataLookupService {
 					.filter(Boolean);
 
 				if (saveElements.length === 0) {
+					console.error(`[IGX-OTT] No element UIDs found — cannot save. Elements requested: ${elements.map(e => e.name).join(', ')}`);
 					return throwError(() => new Error('No element UIDs found'));
 				}
 
@@ -217,6 +208,8 @@ export class MetadataLookupService {
 						CreateMissingAttributes: false
 					}
 				};
+
+				console.log(`[IGX-OTT] SavePartial body for ${pageId}:`, JSON.stringify(body));
 
 				return this.cmsApi.postWcf<any>(
 					'PageCommandsServices', 'SavePartial', body
