@@ -387,13 +387,22 @@ export class MainComponentService extends ComponentBase {
 
 		wrapper.appendChild(btn);
 
-		// Click handler: resolve download URL at click time, then open via Office URI scheme
+		// Click handler: resolve URL at click time, open online or via Office URI scheme
 		btn.addEventListener('click', () => {
 			const url = this.resolveAssetDownloadUrl(ctx);
 			if (!url) {
-				console.warn('[IGX-OTT] Could not resolve download URL for Open in Word');
+				console.warn('[IGX-OTT] Could not resolve URL for Open in Word');
 				return;
 			}
+
+			// Online URLs (SharePoint, OneDrive, Office) → open in browser (Word Online)
+			if (this.isOnlineOfficeUrl(url)) {
+				console.log(`[IGX-OTT] Opening in Word Online: ${url}`);
+				topWindow.open(url, '_blank');
+				return;
+			}
+
+			// Local/CMS files → try ms-word URI scheme
 			const uri = mapping.uri + encodeURI(url);
 			console.log(`[IGX-OTT] Opening in ${mapping.app}: ${uri}`);
 			topWindow.open(uri, '_self');
@@ -418,16 +427,20 @@ export class MainComponentService extends ComponentBase {
 	}
 
 	/**
-	 * Resolves the download URL for the current asset.
+	 * Resolves the URL for the current asset.
 	 * Called at click time so CMS DOM is fully rendered.
 	 *
-	 * The CMS preview URL (dsspreview/amd/{id}) returns HTML, not the file.
-	 * We need the actual file URL for Word to open the .docx.
+	 * For Remote Assets: reads the "Current URL" field from the Properties
+	 * panel — this contains the SharePoint/OneDrive share link.
+	 *
+	 * For local assets: tries NG_REF model, then dss download URL.
 	 *
 	 * Strategy:
-	 *   1. NG_REF model — look for any string property containing a file path
-	 *   2. Convert dsspreview URL → dss URL (raw file instead of preview wrapper)
-	 *   3. Fallback: CMS instance path + dss/amd/{numericId}
+	 *   1. Search DOM for "Current URL" field (Remote Assets → SharePoint link)
+	 *   2. Search DOM for any SharePoint/OneDrive URL in inputs or text
+	 *   3. NG_REF model string properties
+	 *   4. Convert dsspreview → dss for raw file download
+	 *   5. Fallback: dss/amd/{id}
 	 */
 	private resolveAssetDownloadUrl(ctx: AssetContext): string {
 		const topWindow = window.top as any;
@@ -435,45 +448,60 @@ export class MainComponentService extends ComponentBase {
 		const baseUrl = topWindow.location?.origin || '';
 		const instancePath = topWindow.location?.pathname?.replace(/\/$/, '') || '';
 
-		// 1. Try NG_REF model for path/URL string properties
+		const hub = topWindow.document.querySelector('assetpane-hub');
+
+		// 1. Search for "Current URL" field value in the Properties panel.
+		//    Remote Assets store the SharePoint share link here.
+		if (hub) {
+			// Check input fields for URLs (Current URL is often in a text input)
+			const inputs = hub.querySelectorAll('input[type="text"], input:not([type]), textarea');
+			for (let i = 0; i < inputs.length; i++) {
+				const val = (inputs[i] as HTMLInputElement).value?.trim() || '';
+				if (val.startsWith('http')) {
+					console.log(`[IGX-OTT] Found URL in input field: ${val}`);
+					return val;
+				}
+			}
+
+			// Check text elements for URLs (might be rendered as plain text)
+			const allEls = hub.querySelectorAll('*');
+			for (let i = 0; i < allEls.length; i++) {
+				const el = allEls[i] as HTMLElement;
+				const text = el.textContent?.trim() || '';
+				if (text.startsWith('https://') && el.children.length === 0 && text.length < 500) {
+					if (this.isOnlineOfficeUrl(text) || text.includes('.com/')) {
+						console.log(`[IGX-OTT] Found URL in text element: ${text}`);
+						return text;
+					}
+				}
+			}
+		}
+
+		// 2. Try NG_REF model for path/URL string properties
 		const model = topWindow.NG_REF?.currentContent?.Model?._value;
 		if (model) {
-			// Check all string properties for anything that looks like a file path
-			const urlCandidateKeys = [
-				'Path', 'CurrentUrl', 'Url', 'DownloadUrl', 'AssetUrl',
-				'FilePath', 'Source', 'ContentUrl', 'OriginalUrl', 'Link',
-				'Href', 'FileUrl', 'ResourceUrl', 'AbsoluteUrl', 'RelativeUrl'
+			const urlKeys = [
+				'CurrentUrl', 'Path', 'Url', 'DownloadUrl', 'AssetUrl',
+				'FilePath', 'Source', 'ContentUrl', 'RemoteUrl', 'ExternalUrl'
 			];
-			for (const key of urlCandidateKeys) {
+			for (const key of urlKeys) {
 				const val = model[key];
 				if (typeof val === 'string' && val.length > 0) {
 					console.log(`[IGX-OTT] Model.${key} = "${val}"`);
+					if (val.startsWith('http')) return val;
 					const cleanPath = val.replace(/^~\//, '');
 					return `${baseUrl}${instancePath}/${cleanPath}`;
 				}
 			}
-
-			// Also dump ALL string values to console for diagnosis
-			const allStrings: Record<string, string> = {};
-			for (const key of Object.keys(model)) {
-				const v = model[key];
-				if (typeof v === 'string' && v.length > 0 && v.length < 500) {
-					allStrings[key] = v;
-				}
-			}
-			console.log('[IGX-OTT] All model string values:', JSON.stringify(allStrings, null, 2));
 		}
 
-		// 2. Find <a> in assetpane-hub and convert dsspreview → dss for raw file
-		const hub = topWindow.document.querySelector('assetpane-hub');
+		// 3. Find <a> in hub and convert dsspreview → dss for raw file
 		if (hub) {
 			const anchors = hub.querySelectorAll('a[href]');
 			for (let i = 0; i < anchors.length; i++) {
 				const a = anchors[i] as HTMLAnchorElement;
 				if (a.href && !a.href.includes('javascript:') && !a.href.includes('#')) {
 					let url = a.href;
-					// Convert preview URL to raw download URL
-					// dsspreview/amd/85 → dss/amd/85 (raw file, not HTML preview)
 					if (url.includes('/dsspreview/')) {
 						url = url.replace('/dsspreview/', '/dss/');
 						console.log(`[IGX-OTT] Converted preview → raw URL: ${url}`);
@@ -485,11 +513,20 @@ export class MainComponentService extends ComponentBase {
 			}
 		}
 
-		// 3. Fallback: construct dss URL from asset ID
+		// 4. Fallback: construct dss URL from asset ID
 		const numericId = ctx.id.replace(/[^0-9]/g, '');
 		const fallbackUrl = `${baseUrl}${instancePath}/dss/amd/${numericId}`;
 		console.warn(`[IGX-OTT] Using fallback dss URL: ${fallbackUrl}`);
 		return fallbackUrl;
+	}
+
+	/** Check if a URL points to an online Office service (SharePoint, OneDrive, Office 365) */
+	private isOnlineOfficeUrl(url: string): boolean {
+		return url.includes('sharepoint.com')
+			|| url.includes('onedrive.com')
+			|| url.includes('onedrive.live.com')
+			|| url.includes('office.com')
+			|| url.includes('office365.com');
 	}
 
 	/**
