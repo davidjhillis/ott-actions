@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, catchError, delay } from 'rxjs/operators';
+import { map, catchError, delay, tap } from 'rxjs/operators';
 import { CMSCommunicationsService } from './cms-communications.service';
 import { CmsApiService } from './cms-api.service';
 import { TMProject, TmCreateProjectResult, TranslationSubmission, FolderChildItem } from '../models/translation.model';
@@ -42,9 +42,7 @@ export class TranslationManagerApiService {
 			return this.simulateGetProjects();
 		}
 
-		return this.http.get<any[]>(`${this.tmBaseUrl}/GetProjects`, {
-			headers: this.getHeaders()
-		}).pipe(
+		return this.http.get<any[]>(`${this.tmBaseUrl}/GetProjects`).pipe(
 			map(projects => projects.map(p => this.mapProject(p))),
 			catchError(() => this.simulateGetProjects())
 		);
@@ -52,37 +50,65 @@ export class TranslationManagerApiService {
 
 	/**
 	 * Create a TM project from a translation submission.
-	 * Maps FolderChildItem[] → the TranslationPage[] format the TM API expects.
+	 *
+	 * The TM backend (ASP.NET MVC) expects form-encoded parameters:
+	 *   - name, targetLanguages[], locales[], translateTaxonomy, dueDate, createClones
+	 *   - pageList: JSON string of TranslationPage[] in Request.Form
 	 */
 	createProject(submission: TranslationSubmission, files: FolderChildItem[]): Observable<TmCreateProjectResult> {
 		if (this.cms.isDevMode) {
 			return this.simulateCreateProject(submission);
 		}
 
-		const body = {
-			name: submission.projectName,
-			targetLanguages: [this.localeToLanguage(submission.locale)],
-			locales: [submission.locale],
-			translateTaxonomy: false,
-			dueDate: submission.dueDate || null,
-			createClones: false,
-			pages: files.map(f => ({
-				pageId: f.id,
-				pageName: f.name,
-				pageType: f.type
-			}))
-		};
+		// Build TranslationPage[] matching the C# model
+		const pageList = files.map(f => ({
+			id: f.id,
+			pageName: f.name,
+			schema: f.schema || f.type || '',
+			locale: submission.locale,
+			extension: null,
+			cloneContentIds: [],
+			masterPage: '',
+			reason: '',
+			versionMapId: '',
+			exportedMasterVersion: 0,
+			locales: [submission.locale]
+		}));
 
-		return this.http.post<any>(`${this.tmBaseUrl}/CreateProject`, body, {
-			headers: this.getHeaders()
-		}).pipe(
+		// ASP.NET MVC binds from form data, not JSON body
+		const formData = new FormData();
+		formData.append('name', submission.projectName);
+		formData.append('translateTaxonomy', 'false');
+		formData.append('createClones', 'false');
+		formData.append('forceCheckin', 'false');
+		formData.append('dueDate', submission.dueDate || new Date().toISOString());
+		formData.append('pageList', JSON.stringify(pageList));
+
+		// Arrays need one entry per value for MVC model binding
+		const targetLang = this.localeToLanguage(submission.locale);
+		formData.append('targetLanguages', targetLang);
+		formData.append('locales', submission.locale);
+
+		console.log('[IGX-OTT] TM CreateProject:', {
+			name: submission.projectName,
+			locale: submission.locale,
+			targetLanguage: targetLang,
+			pageCount: files.length,
+			url: `${this.tmBaseUrl}/CreateProject`
+		});
+
+		return this.http.post<any>(`${this.tmBaseUrl}/CreateProject`, formData).pipe(
+			tap(res => console.log('[IGX-OTT] TM CreateProject response:', res)),
 			map(res => ({
 				success: res.success !== false,
 				projectId: res.projectId || '',
 				reason: res.reason,
 				tmAppUrl: this.getProjectUrl(res.projectId)
 			})),
-			catchError(() => this.simulateCreateProject(submission))
+			catchError(err => {
+				console.error('[IGX-OTT] TM CreateProject failed:', err);
+				return this.simulateCreateProject(submission);
+			})
 		);
 	}
 
@@ -115,10 +141,6 @@ export class TranslationManagerApiService {
 	}
 
 	// -- Private helpers --
-
-	private getHeaders(): HttpHeaders {
-		return new HttpHeaders({ 'Content-Type': 'application/json' });
-	}
 
 	/** Map TM backend Project model → our TMProject interface */
 	private mapProject(p: any): TMProject {
