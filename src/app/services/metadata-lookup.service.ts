@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
-import { map, catchError, tap, switchMap } from 'rxjs/operators';
+import { map, catchError, tap, switchMap, shareReplay } from 'rxjs/operators';
 import { CMSCommunicationsService } from './cms-communications.service';
 import { CmsApiService, CmsPageData } from './cms-api.service';
 import { FolderSchema } from '../models/translation.model';
@@ -76,6 +76,9 @@ export class MetadataLookupService {
 	/** Whether a load is currently in progress */
 	private loading = false;
 
+	/** Shared observable for the current load — lets multiple callers wait for completion */
+	private loadObs$: Observable<void> | null = null;
+
 	constructor(
 		private cms: CMSCommunicationsService,
 		private cmsApi: CmsApiService
@@ -93,9 +96,10 @@ export class MetadataLookupService {
 	 * Safe to call multiple times; only loads once.
 	 */
 	loadMetadataIndex(): Observable<void> {
-		if (this.loaded || this.loading) {
-			return of(undefined);
-		}
+		if (this.loaded) return of(undefined);
+
+		// Return the in-progress observable so callers can wait for completion
+		if (this.loadObs$) return this.loadObs$;
 
 		if (this.cms.isDevMode) {
 			this.loadDemoData();
@@ -104,8 +108,9 @@ export class MetadataLookupService {
 
 		this.loading = true;
 
-		// Strategy: use REST API first, fall back to postMessage
-		return new Observable<void>(subscriber => {
+		// Strategy: use REST API first, fall back to postMessage.
+		// shareReplay(1) caches the result so late subscribers get it immediately.
+		this.loadObs$ = new Observable<void>(subscriber => {
 			this.cmsApi.checkAvailability().subscribe(available => {
 				if (available) {
 					this.loadIndexViaRestApi(subscriber);
@@ -113,7 +118,9 @@ export class MetadataLookupService {
 					this.loadIndexViaPostMessage(subscriber);
 				}
 			});
-		});
+		}).pipe(shareReplay(1));
+
+		return this.loadObs$;
 	}
 
 	/**
@@ -231,6 +238,7 @@ export class MetadataLookupService {
 	refresh(): Observable<void> {
 		this.loaded = false;
 		this.loading = false;
+		this.loadObs$ = null;
 		this.metadataMap.clear();
 		return this.loadMetadataIndex();
 	}

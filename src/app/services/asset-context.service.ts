@@ -384,21 +384,32 @@ export class AssetContextService implements OnDestroy {
 	/**
 	 * Enrich context from the metadata lookup service.
 	 * Matches asset folder name to a site tree metadata page.
+	 *
+	 * Waits for the metadata index to finish loading before looking up —
+	 * the index load is async (multiple REST calls) and may not be ready
+	 * when this method is first called.
 	 */
 	private enrichFromMetadataLookup(ctx: AssetContext): void {
 		const folderName = ctx.name;
-		const metaEntry = this.metadataLookup.lookupByFolderName(folderName);
+		const gen = this.navGeneration;
 
-		if (metaEntry) {
-			console.log(`[IGX-OTT] Metadata lookup: found page ${metaEntry.pageId} for folder "${folderName}" (${metaEntry.schema})`);
-			this.contextSubject.next({
-				...ctx,
-				folderType: metaEntry.schema,
-				metadataPageId: metaEntry.pageId
-			});
-		} else {
-			console.log(`[IGX-OTT] No metadata page found for folder "${folderName}"`);
-		}
+		this.metadataLookup.loadMetadataIndex().subscribe(() => {
+			// Bail if a newer navigation started while we were waiting
+			if (gen !== this.navGeneration) return;
+
+			const metaEntry = this.metadataLookup.lookupByFolderName(folderName);
+
+			if (metaEntry) {
+				console.log(`[IGX-OTT] Metadata lookup: found page ${metaEntry.pageId} for folder "${folderName}" (${metaEntry.schema})`);
+				this.contextSubject.next({
+					...ctx,
+					folderType: metaEntry.schema,
+					metadataPageId: metaEntry.pageId
+				});
+			} else {
+				console.log(`[IGX-OTT] No metadata page found for folder "${folderName}"`);
+			}
+		});
 	}
 
 	ngOnDestroy(): void {

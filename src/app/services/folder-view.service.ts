@@ -90,17 +90,19 @@ export class FolderViewService {
 		const schema = this.resolveSchema(ctx.folderType || model.SchemaName || ctx.schema);
 		const breadcrumbs = this.buildBreadcrumbsFromPath(ctx.path || '', ctx.id, model.Name || ctx.name);
 		const children = this.parseChildrenFromDom();
-		const metadata = this.extractMetadataFromModel(schema, model);
 
+		// Metadata and pageFields come from the site tree component (via loadMetadataFromSiteTree),
+		// NOT from the asset folder model — which contains raw CMS internals like AllowedExtensions,
+		// AssetType, ByteSize, etc. that shouldn't be shown in the metadata card.
 		const data: FolderViewData = {
 			schema,
 			tabs: this.getTabsForSchema(schema),
 			breadcrumbs,
 			children,
-			metadata,
+			metadata: null,
 			translatedCollections: [],
 			tmProjects: [],
-			pageFields: this.buildPageFieldsFromModel(model),
+			pageFields: [],
 			rawPageData: null
 		};
 
@@ -246,24 +248,22 @@ export class FolderViewService {
 				const schema = this.resolveSchema(folderType || pageData?.Schema || properties?.Schema || ctx.schema);
 				const breadcrumbs = this.buildBreadcrumbsFromProperties(properties, ctx);
 				const childItems = this.mapAssetChildren(children);
-				const pageFields = pageData ? this.cmsApi.parsePageFields(pageData) : [];
-
-				// Try to extract typed metadata from page data
-				const metadata = pageData ? this.extractTypedMetadata(schema, pageData) : null;
 
 				// Extract translated collections from children if schema warrants it
 				const translatedCollections = this.extractTranslatedCollections(children, pageData);
 
+				// Metadata and pageFields come from the site tree component, not from
+				// the asset folder page data (which contains CMS internals).
 				const data: FolderViewData = {
 					schema,
 					tabs: this.getTabsForSchema(schema),
 					breadcrumbs,
 					children: childItems,
-					metadata,
+					metadata: null,
 					translatedCollections,
 					tmProjects: this.extractTmProjects(pageData),
-					pageFields,
-					rawPageData: pageData
+					pageFields: [],
+					rawPageData: null
 				};
 
 				this.viewDataSubject.next(data);
