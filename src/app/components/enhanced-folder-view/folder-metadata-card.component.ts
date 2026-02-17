@@ -43,7 +43,7 @@ import { ElementUpdate } from '../../services/metadata-lookup.service';
 							[ngModel]="editValues['DesignationNumber']"
 							(ngModelChange)="editValues['DesignationNumber'] = $event">
 					</div>
-					<div class="mc-field" *ngIf="designationMeta.organization || editing">
+					<div class="mc-field">
 						<span class="mc-field-label">Organization</span>
 						<span class="mc-field-value" *ngIf="!editing">{{ designationMeta.organization || '—' }}</span>
 						<input *ngIf="editing" class="mc-input" type="text"
@@ -57,35 +57,35 @@ import { ElementUpdate } from '../../services/metadata-lookup.service';
 							[ngModel]="editValues['Committee']"
 							(ngModelChange)="editValues['Committee'] = $event">
 					</div>
-					<div class="mc-field" *ngIf="designationMeta.committeeCode || editing">
+					<div class="mc-field">
 						<span class="mc-field-label">Committee Code</span>
 						<span class="mc-field-value mono" *ngIf="!editing">{{ designationMeta.committeeCode || '—' }}</span>
 						<input *ngIf="editing" class="mc-input" type="text"
 							[ngModel]="editValues['CommitteeCode']"
 							(ngModelChange)="editValues['CommitteeCode'] = $event">
 					</div>
-					<div class="mc-field" *ngIf="designationMeta.homeEditor || editing">
+					<div class="mc-field">
 						<span class="mc-field-label">Home Editor</span>
 						<span class="mc-field-value" *ngIf="!editing">{{ designationMeta.homeEditor || '—' }}</span>
 						<input *ngIf="editing" class="mc-input" type="text"
 							[ngModel]="editValues['HomeEditor']"
 							(ngModelChange)="editValues['HomeEditor'] = $event">
 					</div>
-					<div class="mc-field" *ngIf="designationMeta.homeEditorEmail || editing">
+					<div class="mc-field">
 						<span class="mc-field-label">Home Editor Email</span>
 						<span class="mc-field-value mc-link" *ngIf="!editing">{{ designationMeta.homeEditorEmail || '—' }}</span>
 						<input *ngIf="editing" class="mc-input" type="email"
 							[ngModel]="editValues['HomeEditorEmail']"
 							(ngModelChange)="editValues['HomeEditorEmail'] = $event">
 					</div>
-					<div class="mc-field" *ngIf="designationMeta.sourceLocale || editing">
+					<div class="mc-field">
 						<span class="mc-field-label">Source Locale</span>
 						<span class="mc-field-value mono" *ngIf="!editing">{{ designationMeta.sourceLocale || '—' }}</span>
 						<input *ngIf="editing" class="mc-input" type="text"
 							[ngModel]="editValues['SourceLocale']"
 							(ngModelChange)="editValues['SourceLocale'] = $event">
 					</div>
-					<div class="mc-field" *ngIf="designationMeta.reportNumber || editing">
+					<div class="mc-field">
 						<span class="mc-field-label">Report #</span>
 						<span class="mc-field-value mono" *ngIf="!editing">{{ designationMeta.reportNumber || '—' }}</span>
 						<input *ngIf="editing" class="mc-input" type="text"
@@ -93,7 +93,7 @@ import { ElementUpdate } from '../../services/metadata-lookup.service';
 							(ngModelChange)="editValues['ReportNumber'] = $event">
 					</div>
 				</div>
-				<div class="mc-field mc-field-wide" *ngIf="designationMeta.notes || editing">
+				<div class="mc-field mc-field-wide">
 					<span class="mc-field-label">Notes</span>
 					<span class="mc-field-value mc-field-notes" *ngIf="!editing">{{ designationMeta.notes || '—' }}</span>
 					<textarea *ngIf="editing" class="mc-textarea"
