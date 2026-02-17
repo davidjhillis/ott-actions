@@ -51,53 +51,59 @@ export class TranslationManagerApiService {
 	/**
 	 * Create a TM project from a translation submission.
 	 *
-	 * The TM backend (ASP.NET MVC) expects form-encoded parameters:
-	 *   - name, targetLanguages[], locales[], translateTaxonomy, dueDate, createClones
-	 *   - pageList: JSON string of TranslationPage[] in Request.Form
+	 * Matches the legacy Dojo UI format exactly:
+	 *   - application/x-www-form-urlencoded POST
+	 *   - pageList: JSON string in form body with {pageName, id, locale, schema, masterPage}
+	 *   - targetLanguages: display name format "Language - [locale]"
+	 *   - dueDate: "M/dd/yyyy HH:mm:ss" format
 	 */
 	createProject(submission: TranslationSubmission, files: FolderChildItem[]): Observable<TmCreateProjectResult> {
 		if (this.cms.isDevMode) {
 			return this.simulateCreateProject(submission);
 		}
 
-		// Build TranslationPage[] matching the C# model
+		// Build TranslationPage[] matching the 5 fields the legacy UI sends
 		const pageList = files.map(f => ({
+			pageName: encodeURIComponent(f.name),
 			id: f.id,
-			pageName: f.name,
-			schema: f.schema || f.type || '',
 			locale: submission.locale,
-			extension: null,
-			cloneContentIds: [],
-			masterPage: '',
-			reason: '',
-			versionMapId: '',
-			exportedMasterVersion: 0,
-			locales: [submission.locale]
+			schema: f.schema || f.type || '',
+			masterPage: f.id
 		}));
 
-		// ASP.NET MVC binds from form data, not JSON body
-		const formData = new FormData();
-		formData.append('name', submission.projectName);
-		formData.append('translateTaxonomy', 'false');
-		formData.append('createClones', 'false');
-		formData.append('forceCheckin', 'false');
-		formData.append('dueDate', submission.dueDate || new Date().toISOString());
-		formData.append('pageList', JSON.stringify(pageList));
+		// Format dueDate as M/dd/yyyy HH:mm:ss (what the legacy _parseDate produces)
+		const dueDateStr = this.formatDueDate(submission.dueDate);
 
-		// Arrays need one entry per value for MVC model binding
-		const targetLang = this.localeToLanguage(submission.locale);
-		formData.append('targetLanguages', targetLang);
-		formData.append('locales', submission.locale);
+		// Display name for targetLanguages: "Language - [locale]"
+		const targetLangDisplay = `${this.localeToLanguage(submission.locale)} - [${submission.locale}]`;
+
+		// Build URL-encoded form body (application/x-www-form-urlencoded)
+		// matching exactly what Dojo xhr.post({ content: {...} }) sends
+		let body = new HttpParams()
+			.set('name', submission.projectName)
+			.set('pageList', JSON.stringify(pageList))
+			.set('targetLanguages', targetLangDisplay)
+			.set('locales', submission.locale)
+			.set('translateTaxonomy', 'false')
+			.set('createClones', 'false')
+			.set('dueDate', dueDateStr)
+			.set('forceCheckin', 'false');
 
 		console.log('[IGX-OTT] TM CreateProject:', {
+			url: `${this.tmBaseUrl}/CreateProject`,
 			name: submission.projectName,
 			locale: submission.locale,
-			targetLanguage: targetLang,
+			targetLanguage: targetLangDisplay,
+			dueDate: dueDateStr,
 			pageCount: files.length,
-			url: `${this.tmBaseUrl}/CreateProject`
+			pageList
 		});
 
-		return this.http.post<any>(`${this.tmBaseUrl}/CreateProject`, formData).pipe(
+		return this.http.post<any>(
+			`${this.tmBaseUrl}/CreateProject`,
+			body.toString(),
+			{ headers: new HttpHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' }) }
+		).pipe(
 			tap(res => console.log('[IGX-OTT] TM CreateProject response:', res)),
 			map(res => ({
 				success: res.success !== false,
@@ -169,6 +175,20 @@ export class TranslationManagerApiService {
 			'ko-KR': 'Korean'
 		};
 		return map[locale] || locale;
+	}
+
+	/** Format date as M/dd/yyyy HH:mm:ss (matching legacy TM _parseDate format) */
+	private formatDueDate(dateStr?: string): string {
+		const d = dateStr ? new Date(dateStr) : new Date();
+		// Default to 30 days from now if no date provided
+		if (!dateStr) d.setDate(d.getDate() + 30);
+		const month = d.getMonth() + 1;
+		const day = String(d.getDate()).padStart(2, '0');
+		const year = d.getFullYear();
+		const hours = String(d.getHours()).padStart(2, '0');
+		const minutes = String(d.getMinutes()).padStart(2, '0');
+		const seconds = String(d.getSeconds()).padStart(2, '0');
+		return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
 	}
 
 	// -- Simulated responses for dev mode / fallback --
