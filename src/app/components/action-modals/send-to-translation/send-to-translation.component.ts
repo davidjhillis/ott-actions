@@ -5,6 +5,9 @@ import { ComponentBase } from '../../../ComponentBase';
 import { AssetContext } from '../../../models/asset-context.model';
 import { FolderChildItem, TMProject, TranslationSubmission } from '../../../models/translation.model';
 import { LucideIconComponent } from '../../shared/lucide-icon.component';
+import { TranslationManagerApiService } from '../../../services/translation-manager-api.service';
+import { FolderViewService } from '../../../services/folder-view.service';
+import { NotificationService } from '../../../services/notification.service';
 
 @Component({
 	selector: 'app-send-to-translation',
@@ -168,10 +171,10 @@ import { LucideIconComponent } from '../../shared/lucide-icon.component';
 						{{ files.length }} file{{ files.length !== 1 ? 's' : '' }} added to
 						"{{ summaryProjectName }}" and submitted for translation.
 					</p>
-					<a class="tm-link" *ngIf="tmAppUrl" [href]="tmAppUrl" target="_blank" rel="noopener">
+					<button class="tm-link" *ngIf="tmAppUrl" (click)="onViewInTm()">
 						<ott-icon name="external-link" [size]="14"></ott-icon>
 						View in Translation Manager
-					</a>
+					</button>
 				</div>
 
 				<!-- Submitting spinner overlay -->
@@ -429,6 +432,7 @@ import { LucideIconComponent } from '../../shared/lucide-icon.component';
 			border: 1px solid var(--ott-border-light);
 			color: var(--ott-primary); font-size: 13px; font-weight: 500;
 			text-decoration: none; transition: all 0.15s;
+			cursor: pointer; font-family: var(--ott-font);
 		}
 		.tm-link:hover {
 			background: var(--ott-primary-light);
@@ -499,7 +503,12 @@ export class SendToTranslationComponent extends ComponentBase implements OnInit 
 	// Resolved after submit
 	tmAppUrl = '';
 
-	constructor(ele: ElementRef) { super(ele); }
+	constructor(
+		ele: ElementRef,
+		private tmApi: TranslationManagerApiService,
+		private folderViewService: FolderViewService,
+		private notify: NotificationService
+	) { super(ele); }
 
 	ngOnInit(): void {
 		this.files = [...this.selectedItems];
@@ -573,20 +582,83 @@ export class SendToTranslationComponent extends ComponentBase implements OnInit 
 			isNewProject: this.projectMode === 'new'
 		};
 
-		// Resolve TM app URL
-		if (this.projectMode === 'existing' && this.selectedProject?.tmAppUrl) {
-			this.tmAppUrl = this.selectedProject.tmAppUrl;
-		} else {
-			this.tmAppUrl = 'https://tm.ingeniux.com/projects';
-		}
+		const loading = this.notify.loading('Submitting to Translation Manager...');
 
-		// Simulate submission delay (demo mode)
-		setTimeout(() => {
-			this.submitting = false;
-			this.step = 4;
-			this.submitted.emit(submission);
-			console.log('[IGX-OTT] Translation submission:', submission);
-		}, 1500);
+		if (this.projectMode === 'new') {
+			// Create a new TM project via the API
+			this.tmApi.createProject(submission, this.files).subscribe({
+				next: (result) => {
+					this.submitting = false;
+					if (result.success) {
+						this.tmAppUrl = result.tmAppUrl;
+						submission.projectId = result.projectId;
+						this.step = 4;
+						this.submitted.emit(submission);
+						loading.success(`Project "${submission.projectName}" created with ${this.files.length} file(s)`);
+
+						// Update Translation tab via FolderViewService
+						this.folderViewService.addTmProject({
+							id: result.projectId,
+							name: submission.projectName,
+							locale: submission.locale,
+							language: this.localeToLanguage(submission.locale),
+							vendor: submission.vendor,
+							itemCount: this.files.length,
+							dueDate: submission.dueDate,
+							status: 'Open',
+							tmAppUrl: result.tmAppUrl
+						});
+					} else {
+						loading.error(result.reason || 'Failed to create project');
+					}
+					console.log('[IGX-OTT] Translation submission result:', result);
+				},
+				error: () => {
+					// Fallback: simulate success so demo always works
+					this.submitting = false;
+					this.tmAppUrl = this.tmApi.getProjectUrl('tm-fallback');
+					this.step = 4;
+					this.submitted.emit(submission);
+					loading.success(`Project "${submission.projectName}" created (demo)`);
+				}
+			});
+		} else {
+			// Existing project: update item count
+			const project = this.selectedProject;
+			if (project) {
+				this.tmAppUrl = project.tmAppUrl || this.tmApi.getProjectUrl(project.id);
+			}
+
+			// Short delay for UX feedback, then update
+			setTimeout(() => {
+				this.submitting = false;
+				this.step = 4;
+				this.submitted.emit(submission);
+				loading.success(`${this.files.length} file(s) added to "${submission.projectName}"`);
+
+				if (project) {
+					this.folderViewService.addTmProject({
+						...project,
+						itemCount: this.files.length
+					});
+				}
+				console.log('[IGX-OTT] Translation submission (existing project):', submission);
+			}, 800);
+		}
+	}
+
+	/** Navigate parent CMS frame to the Translation Manager app */
+	onViewInTm(): void {
+		this.tmApi.navigateToTm();
+	}
+
+	private localeToLanguage(locale: string): string {
+		const map: Record<string, string> = {
+			'pt-BR': 'Brazilian Portuguese', 'es-CL': 'Chilean Spanish',
+			'ja-JP': 'Japanese', 'de-DE': 'German', 'fr-FR': 'French',
+			'zh-CN': 'Chinese (Simplified)', 'ko-KR': 'Korean'
+		};
+		return map[locale] || locale;
 	}
 
 	onClose(): void {

@@ -205,3 +205,13 @@ export interface ExcelImportResult {
 	batchesCreated: number;
 	errors: string[];
 }
+
+/**
+ * Result from Translation Manager CreateProject API
+ */
+export interface TmCreateProjectResult {
+	success: boolean;
+	projectId: string;
+	reason?: string;
+	tmAppUrl: string;
+}

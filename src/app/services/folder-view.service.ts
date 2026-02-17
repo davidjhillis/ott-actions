@@ -486,6 +486,26 @@ export class FolderViewService {
 		);
 	}
 
+	/**
+	 * Add or update a TM project in the current view data.
+	 * If a project with the same ID exists, its itemCount is incremented.
+	 * Otherwise, the project is prepended to the list.
+	 * Translation tab auto-updates because it reads from viewData$.
+	 */
+	addTmProject(project: TMProject): void {
+		const current = this.viewDataSubject.value;
+		if (!current) return;
+
+		const existingIdx = current.tmProjects.findIndex(p => p.id === project.id);
+		const updatedProjects = existingIdx >= 0
+			? current.tmProjects.map((p, i) =>
+				i === existingIdx ? { ...p, itemCount: p.itemCount + project.itemCount } : p
+			)
+			: [project, ...current.tmProjects];
+
+		this.viewDataSubject.next({ ...current, tmProjects: updatedProjects });
+	}
+
 	// -- Private helpers --
 
 	/**
