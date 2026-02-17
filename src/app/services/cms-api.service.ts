@@ -166,13 +166,26 @@ export class CmsApiService {
 
 		// Parse XML elements into key-value pairs
 		const elements: Record<string, any> = {};
+
 		// Match elements with content: <TagName attr="val">content</TagName>
 		const regex = /<(\w+)\s([^>]*)>([^<]*)<\/\1>/g;
 		let match;
 		while ((match = regex.exec(xml)) !== null) {
 			const [, tagName, attrs, value] = match;
 			elements[tagName] = value.trim() || '';
-			// Store UID for SavePartial
+			const uidMatch = attrs.match(/UID="([^"]+)"/);
+			if (uidMatch) {
+				elements[`__uid_${tagName}`] = uidMatch[1];
+			}
+		}
+
+		// Match self-closing elements (empty values): <TagName attr="val"/>
+		// Critical for new/empty components where all fields are self-closing.
+		const selfClosingRegex = /<(\w+)\s([^>]*)\/>/g;
+		while ((match = selfClosingRegex.exec(xml)) !== null) {
+			const [, tagName, attrs] = match;
+			if (elements.hasOwnProperty(tagName)) continue; // already parsed above
+			elements[tagName] = '';
 			const uidMatch = attrs.match(/UID="([^"]+)"/);
 			if (uidMatch) {
 				elements[`__uid_${tagName}`] = uidMatch[1];

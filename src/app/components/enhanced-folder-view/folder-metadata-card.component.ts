@@ -57,12 +57,26 @@ import { ElementUpdate } from '../../services/metadata-lookup.service';
 							[ngModel]="editValues['Committee']"
 							(ngModelChange)="editValues['Committee'] = $event">
 					</div>
+					<div class="mc-field" *ngIf="designationMeta.committeeCode || editing">
+						<span class="mc-field-label">Committee Code</span>
+						<span class="mc-field-value mono" *ngIf="!editing">{{ designationMeta.committeeCode || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="text"
+							[ngModel]="editValues['CommitteeCode']"
+							(ngModelChange)="editValues['CommitteeCode'] = $event">
+					</div>
 					<div class="mc-field" *ngIf="designationMeta.homeEditor || editing">
 						<span class="mc-field-label">Home Editor</span>
 						<span class="mc-field-value" *ngIf="!editing">{{ designationMeta.homeEditor || '—' }}</span>
 						<input *ngIf="editing" class="mc-input" type="text"
 							[ngModel]="editValues['HomeEditor']"
 							(ngModelChange)="editValues['HomeEditor'] = $event">
+					</div>
+					<div class="mc-field" *ngIf="designationMeta.homeEditorEmail || editing">
+						<span class="mc-field-label">Home Editor Email</span>
+						<span class="mc-field-value mc-link" *ngIf="!editing">{{ designationMeta.homeEditorEmail || '—' }}</span>
+						<input *ngIf="editing" class="mc-input" type="email"
+							[ngModel]="editValues['HomeEditorEmail']"
+							(ngModelChange)="editValues['HomeEditorEmail'] = $event">
 					</div>
 					<div class="mc-field" *ngIf="designationMeta.sourceLocale || editing">
 						<span class="mc-field-label">Source Locale</span>
@@ -471,7 +485,9 @@ export class FolderMetadataCardComponent {
 			this.editValues['DesignationNumber'] = this.designationMeta.baseDesignation;
 			this.editValues['Organization'] = this.designationMeta.organization;
 			this.editValues['Committee'] = this.designationMeta.committee;
+			this.editValues['CommitteeCode'] = this.designationMeta.committeeCode || '';
 			this.editValues['HomeEditor'] = this.designationMeta.homeEditor;
+			this.editValues['HomeEditorEmail'] = this.designationMeta.homeEditorEmail || '';
 			this.editValues['ReportNumber'] = this.designationMeta.reportNumber || '';
 			this.editValues['SourceLocale'] = this.designationMeta.sourceLocale || '';
 			this.editValues['Notes'] = this.designationMeta.notes || '';
