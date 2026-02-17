@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideIconComponent } from '../shared/lucide-icon.component';
-import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../models/translation.model';
+import { TranslatedStandardCollection, TMProject } from '../../models/translation.model';
 
 @Component({
 	selector: 'ott-translation-tab',
@@ -30,14 +30,9 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 			<!-- Send to Translation — button that opens modal -->
 			<div class="send-bar">
 				<div class="send-info">
-					<span class="send-count" *ngIf="selectedItems.length > 0">
-						{{ selectedItems.length }} file{{ selectedItems.length !== 1 ? 's' : '' }} selected
-					</span>
-					<span class="send-hint" *ngIf="selectedItems.length === 0">
-						Select files in the Contents tab
-					</span>
+					<span class="send-hint">Choose files to send in the modal</span>
 				</div>
-				<button class="btn-send" [disabled]="selectedItems.length === 0" (click)="onSendToTranslation()">
+				<button class="btn-send" (click)="onSendToTranslation()">
 					<ott-icon name="send" [size]="14"></ott-icon>
 					Send to Translation
 				</button>
@@ -205,7 +200,7 @@ import { TranslatedStandardCollection, TMProject, FolderChildItem } from '../../
 export class TranslationTabComponent {
 	@Input() translatedCollections: TranslatedStandardCollection[] = [];
 	@Input() tmProjects: TMProject[] = [];
-	@Input() selectedItems: FolderChildItem[] = [];
+
 
 	@Output() sendToTranslation = new EventEmitter<void>();
 	@Output() uploadSourceFiles = new EventEmitter<void>();

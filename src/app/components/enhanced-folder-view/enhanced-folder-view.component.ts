@@ -95,7 +95,6 @@ import { LucideIconComponent } from '../shared/lucide-icon.component';
 					*ngIf="activeTab === 'translation'"
 					[translatedCollections]="viewData.translatedCollections"
 					[tmProjects]="viewData.tmProjects"
-					[selectedItems]="selectedItems"
 					(sendToTranslation)="onSendToTranslation()"
 					(uploadSourceFiles)="onUploadSourceFiles()"
 					(addCollection)="onAddCollection()">
@@ -355,7 +354,7 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 	}
 
 	onSendToTranslation(): void {
-		console.log(`[IGX-OTT] Opening Send to Translation modal with ${this.selectedItems.length} items`);
+		console.log('[IGX-OTT] Opening Send to Translation modal');
 		this.actionExecutor.execute({
 			id: 'send-to-translation',
 			label: 'Send to Translation',
@@ -365,7 +364,6 @@ export class EnhancedFolderViewComponent extends ComponentBase implements OnInit
 			groupId: 'translation',
 			order: 0
 		}, {
-			selectedItems: this.selectedItems,
 			tmProjects: this.viewData?.tmProjects || []
 		});
 	}

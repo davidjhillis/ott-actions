@@ -40,24 +40,29 @@ import { NotificationService } from '../../../services/notification.service';
 					<div class="step-name">{{ stepName }}</div>
 				</div>
 
-				<!-- ═══ STEP 1: Review Files ═══ -->
+				<!-- ═══ STEP 1: Select Files ═══ -->
 				<div class="modal-body" *ngIf="step === 1">
+					<div class="select-all-bar">
+						<label class="select-all-label" (click)="toggleAll()">
+							<input type="checkbox" [checked]="allSelected" (click)="$event.stopPropagation()">
+							<span>Select all ({{ availableFiles.length }})</span>
+						</label>
+						<span class="file-count" *ngIf="selectedFileIds.size > 0">
+							{{ selectedFileIds.size }} selected
+						</span>
+					</div>
 					<div class="file-list">
-						<div class="file-item" *ngFor="let f of files; let i = index">
+						<label class="file-item file-selectable" *ngFor="let f of availableFiles"
+							[class.file-selected]="isSelected(f)" (click)="toggleFile(f)">
+							<input type="checkbox" [checked]="isSelected(f)" (click)="$event.stopPropagation()">
 							<ott-icon [name]="f.isFolder ? 'folder' : (f.type === 'DXML' ? 'file-text' : 'file')" [size]="14" color="var(--ott-text-secondary)"></ott-icon>
 							<span class="file-name">{{ f.name }}</span>
 							<span class="file-type">{{ f.type }}</span>
-							<button class="remove-btn" (click)="removeFile(i)" title="Remove">
-								<ott-icon name="x" [size]="14"></ott-icon>
-							</button>
-						</div>
-						<div class="empty-state" *ngIf="files.length === 0">
+						</label>
+						<div class="empty-state" *ngIf="availableFiles.length === 0">
 							<ott-icon name="file-search" [size]="20" color="var(--ott-text-muted)"></ott-icon>
-							<span>No files selected. Select files in the Contents tab first.</span>
+							<span>No files in this folder.</span>
 						</div>
-					</div>
-					<div class="file-count" *ngIf="files.length > 0">
-						{{ files.length }} file{{ files.length !== 1 ? 's' : '' }} selected
 					</div>
 				</div>
 
@@ -187,7 +192,7 @@ import { NotificationService } from '../../../services/notification.service';
 				<div class="modal-footer">
 					<ng-container *ngIf="step === 1">
 						<button class="btn btn-secondary" (click)="onClose()">Cancel</button>
-						<button class="btn btn-primary" (click)="step = 2" [disabled]="files.length === 0">
+						<button class="btn btn-primary" (click)="step = 2" [disabled]="selectedFileIds.size === 0">
 							Next
 							<ott-icon name="arrow-right" [size]="14"></ott-icon>
 						</button>
@@ -318,16 +323,24 @@ import { NotificationService } from '../../../services/notification.service';
 			background: var(--ott-bg-subtle); color: var(--ott-text-muted);
 			text-transform: uppercase;
 		}
-		.remove-btn {
-			border: none; background: none; cursor: pointer;
-			color: var(--ott-text-muted); padding: 2px;
-			border-radius: var(--ott-radius-sm);
-		}
-		.remove-btn:hover { color: var(--ott-danger); }
 		.file-count {
 			font-size: 12px; color: var(--ott-text-muted);
-			margin-top: 8px;
 		}
+		.select-all-bar {
+			display: flex; align-items: center; justify-content: space-between;
+			margin-bottom: 8px;
+		}
+		.select-all-label {
+			display: flex; align-items: center; gap: 6px;
+			font-size: 12px; font-weight: 600; color: var(--ott-text-secondary);
+			cursor: pointer;
+		}
+		.file-selectable {
+			cursor: pointer; transition: background 0.1s;
+		}
+		.file-selectable:hover { background: var(--ott-bg-muted); }
+		.file-selected { background: var(--ott-primary-light); }
+		.file-item input[type="checkbox"] { margin: 0; cursor: pointer; }
 		.empty-state {
 			display: flex; flex-direction: column; align-items: center; gap: 6px;
 			padding: 24px; color: var(--ott-text-muted); font-size: 13px;
@@ -480,15 +493,17 @@ import { NotificationService } from '../../../services/notification.service';
 })
 export class SendToTranslationComponent extends ComponentBase implements OnInit {
 	@Input() context?: AssetContext;
-	@Input() selectedItems: FolderChildItem[] = [];
 	@Input() tmProjects: TMProject[] = [];
 
 	@Output() close = new EventEmitter<void>();
 	@Output() submitted = new EventEmitter<TranslationSubmission>();
 
 	step = 1;
-	files: FolderChildItem[] = [];
 	submitting = false;
+
+	// Step 1: file picker
+	availableFiles: FolderChildItem[] = [];
+	selectedFileIds = new Set<string>();
 
 	// Step 2 state
 	projectMode: 'existing' | 'new' = 'existing';
@@ -511,13 +526,50 @@ export class SendToTranslationComponent extends ComponentBase implements OnInit 
 	) { super(ele); }
 
 	ngOnInit(): void {
-		this.files = [...this.selectedItems];
-		console.log(`[IGX-OTT] Send to Translation modal opened with ${this.files.length} files`);
+		// Load available files from the current folder view
+		const viewData = this.folderViewService.viewData$;
+		this.observableSubTeardowns.push(
+			viewData.subscribe(data => {
+				if (data) {
+					this.availableFiles = data.children;
+				}
+			})
+		);
+		console.log('[IGX-OTT] Send to Translation modal opened');
+	}
+
+	/** Files selected by the user in Step 1 */
+	get files(): FolderChildItem[] {
+		return this.availableFiles.filter(f => this.selectedFileIds.has(f.id));
+	}
+
+	toggleFile(file: FolderChildItem): void {
+		if (this.selectedFileIds.has(file.id)) {
+			this.selectedFileIds.delete(file.id);
+		} else {
+			this.selectedFileIds.add(file.id);
+		}
+	}
+
+	toggleAll(): void {
+		if (this.selectedFileIds.size === this.availableFiles.length) {
+			this.selectedFileIds.clear();
+		} else {
+			this.availableFiles.forEach(f => this.selectedFileIds.add(f.id));
+		}
+	}
+
+	isSelected(file: FolderChildItem): boolean {
+		return this.selectedFileIds.has(file.id);
+	}
+
+	get allSelected(): boolean {
+		return this.availableFiles.length > 0 && this.selectedFileIds.size === this.availableFiles.length;
 	}
 
 	get stepName(): string {
 		switch (this.step) {
-			case 1: return 'Selected Files';
+			case 1: return 'Select Files';
 			case 2: return 'Translation Project';
 			case 3: return 'Review & Submit';
 			default: return '';
@@ -563,10 +615,6 @@ export class SendToTranslationComponent extends ComponentBase implements OnInit 
 			return this.selectedProject?.dueDate || '';
 		}
 		return this.newProjectDueDate;
-	}
-
-	removeFile(index: number): void {
-		this.files.splice(index, 1);
 	}
 
 	onSubmit(): void {
