@@ -26,6 +26,9 @@ import { FolderChildItem } from '../../models/translation.model';
 				<table class="ct-table">
 					<thead>
 						<tr>
+							<th class="ct-col-cb">
+								<input type="checkbox" [checked]="allSelected" (change)="toggleAll()" title="Select all">
+							</th>
 							<th class="ct-col-name" (click)="sort('name')">
 								Name
 								<ott-icon *ngIf="sortField === 'name'" [name]="sortDir === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="10"></ott-icon>
@@ -47,6 +50,9 @@ import { FolderChildItem } from '../../models/translation.model';
 							[class.ct-selected]="selectedIds.has(item.id)"
 							(click)="toggleItem(item)"
 							(dblclick)="onItemDblClick(item)">
+							<td class="ct-col-cb" (click)="$event.stopPropagation()">
+								<input type="checkbox" [checked]="selectedIds.has(item.id)" (change)="toggleItem(item)">
+							</td>
 							<td class="ct-col-name">
 								<div class="ct-name-cell">
 									<div class="ct-icon-wrap" [class.ct-icon-folder]="item.isFolder">
@@ -163,6 +169,14 @@ import { FolderChildItem } from '../../models/translation.model';
 		.ct-table tbody tr:last-child td { border-bottom: none; }
 
 		/* Columns */
+		.ct-col-cb {
+			width: 32px;
+			text-align: center;
+		}
+		.ct-col-cb input[type="checkbox"] {
+			cursor: pointer;
+			margin: 0;
+		}
 		.ct-col-name { min-width: 0; }
 		.ct-name-cell {
 			display: flex;
@@ -297,6 +311,19 @@ export class FolderContentsTabComponent {
 			this.sortField = field;
 			this.sortDir = 'asc';
 		}
+	}
+
+	get allSelected(): boolean {
+		return this.items.length > 0 && this.selectedIds.size === this.items.length;
+	}
+
+	toggleAll(): void {
+		if (this.allSelected) {
+			this.selectedIds.clear();
+		} else {
+			this.items.forEach(i => this.selectedIds.add(i.id));
+		}
+		this.emitSelection();
 	}
 
 	toggleItem(item: FolderChildItem): void {

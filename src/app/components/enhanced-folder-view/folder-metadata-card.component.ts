@@ -436,12 +436,26 @@ export class FolderMetadataCardComponent {
 	editValues: Record<string, any> = {};
 
 	get hasMetadata(): boolean {
-		return !!(this.designationMeta || this.pageFields.length > 0);
+		// Always show metadata card so fields can be edited
+		return true;
 	}
 
-	get designationMeta(): DesignationCollectionMetadata | null {
-		// All OTT folders use the same schema — treat metadata as DesignationCollection
-		return this.metadata?.baseDesignation !== undefined ? this.metadata : null;
+	get designationMeta(): DesignationCollectionMetadata {
+		// All OTT folders use the same schema — treat metadata as DesignationCollection.
+		// Return a default empty object when no metadata exists yet so the form is always editable.
+		if (this.metadata?.baseDesignation !== undefined) {
+			return this.metadata;
+		}
+		return {
+			baseDesignation: this.folderName || '',
+			organization: '',
+			committee: '',
+			committeeCode: '',
+			homeEditor: '',
+			homeEditorEmail: '',
+			reportNumber: '',
+			translationMaintenance: []
+		};
 	}
 
 	get nonTableFields(): CmsPageField[] {
